@@ -53,3 +53,10 @@ grid noise near the axis is a few per cent of the radial velocity).
 ## Status
 
 - 2026-10-23: plan; G3a case set up.
+- 2026-10-23/24: the first L/D 1 and 4 runs needed four fixes: arrival times after AMR changes, heat transfer scaled by λ, expansion burn, and guards in the equilibrium and temperature solvers.
+- 2026-11-01: both runs parked for continuation on a larger machine, about 10 µs per 30 min on 6 cores with 2 mm cells. The run directories and restart instructions are in `results/G3a_cylinders_parked/`; the early comparison is in `results/G3a_cylinders_early/`.
+- Early comparison (2026-11-01, runs parked at 267 µs (L/D 1) and 173 µs (L/D 4), peaks relative to the 1D sphere of the same mass; the 2D sphere G2b agrees with 1D within 1.2% at 0.3 m and 4% at 0.5 m on all rays, the axis included):
+  - L/D 1 at 0.3–0.5 m: end-on (axis) 2.1–2.4 times the sphere, side-on 1.4–1.6, and 0.50–0.64 at 30–60°. The shock arrives there 15–37% later than for the sphere, between the side and end waves.
+  - L/D 4 at 0.3 m: end-on 2.6, side-on 1.04 (1.44 at 15° and 0.5 m), 0.52–0.59 at 45–60°.
+  - With centre initiation the detonation runs along the axis into both end faces, which gives the strong end-on waves.
+  - The trends against L/D have still to be checked against the literature (side-on rising with L/D for central initiation, Xiao et al.); at 0.3 m L/D 4 is lower side-on than L/D 1.

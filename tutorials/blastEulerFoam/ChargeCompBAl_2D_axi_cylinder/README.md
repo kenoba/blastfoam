@@ -41,5 +41,9 @@ Runs on 6 processes with load balancing.
 
 ## Results
 
+2026-11-01, early comparison (runs parked at 267 us for L/D 1 and 173 us for L/D 4; about 10 us of simulated time per 30 min on 6 cores with 2 mm cells, so continued on a larger machine). Peaks relative to the sphere of the same mass:
+- L/D 1 at 0.3–0.5 m: end-on 2.1–2.4, side-on 1.4–1.6, 0.5–0.64 at 30–60 degrees.
+- L/D 4 at 0.3 m: end-on 2.6, side-on 1.04, 0.52–0.59 at 45–60 degrees.
+
 Run with:
 ./Allrun 1
