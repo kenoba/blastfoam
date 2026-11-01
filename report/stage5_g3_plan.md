@@ -37,13 +37,41 @@ grid noise near the axis is a few per cent of the radial velocity).
 
 ## G3b: Seeded mixing-layer growth (WP 5.3)
 
-- The G2b sphere with a seeded perturbation of the charge surface (single
-  modes and multi-mode), amplitude well above the grid noise of the axis
-  study, to measure the growth of the products/air mixing layer (RMI at
-  breakout, RTI during the deceleration) and its effect on the CO and Al
-  burnout; compare with mixing-layer growth reported for spherical and
-  aluminised charges (e.g. Kuhl, Balakrishnan & Menon). Away from the axis
-  (outside 25 degrees) only.
+- The G2b sphere with a seeded perturbation of the products/air contact, to measure:
+  - the growth of the mixing layer (Rayleigh–Taylor during the deceleration, Richtmyer–Meshkov at the re-shock);
+  - its effect on the CO and Al burnout.
+- Compare with mixing-layer growth reported for spherical and aluminised charges (e.g. Kuhl; Balakrishnan, Menon et al. 2009, `report/external_sources/Balakrishnan09.pdf`).
+- Measured away from the axis and the symmetry plane only (22.5–67.5°).
+- Case: `tutorials/blastEulerFoam/ChargeCompBAl_2D_axi_seeded` (G2b settings, to 1.3 ms). `perturb_contact.py` seeds modes cos(nψ), with n even and ψ the angle from the symmetry plane, in one of two ways:
+  - `./Allrun [-t0 <time>] [-fine] <seed>`: the contact of the 1D solution mapped at t0 is displaced in a band around it. Each cell takes the state of the 1D cell at the displaced radius.
+  - `./Allrun -charge <seed>`: the charge surface is perturbed at t = 0, and the run starts from 0 with the 2D detonation (with the cylinder fixes `expansionBurnRatio` and λ-scaled heat transfer).
+  - `-fine` holds the mixing layer at 1 mm instead of 2 mm; `-np` sets the number of processes.
+- Diagnostics (`contact_modes.py`), on rays in the window 22.5–67.5°:
+  - contact radius R(ψ): the edge of the products core plus the products path length beyond it;
+  - mixing width W(ψ) = ∫ 4f(1 − f) dr, with f the products fraction from the C/(C + N) element ratio of the gas;
+  - mode amplitudes over the window;
+  - CO and H2 mass of the gas.
+- 1D contact (G2b 1D run): Rayleigh–Taylor unstable from 60 µs to 1.3 ms. Inside are denser products, the contact decelerates, and the Atwood number runs from −0.25 (60–200 µs) to −0.05 (1.3 ms). The contact stops at 0.755 m at 0.74 ms and then moves inwards.
+- Unseeded G2b, in the window (the grid-seeded noise):
+
+  | t | Scatter of R between rays | n = 24 amplitude | n = 48 amplitude |
+  |---|---|---|---|
+  | 100 µs | 1.7 mm | about 0.5 mm | about 0.5 mm |
+  | 200 µs | 2.4 mm | 0.8 mm | 0.7 mm |
+  | 500 µs | 4.6 mm | 0.5 mm | 1.1 mm |
+  | 1 ms | 23 mm | 5.4 mm | 6.4 mm |
+  | 1.3 ms | 34 mm | 6.0 mm | 5.8 mm |
+
+  The rise after 0.5 ms is the mesh-seeded fingers.
+- Test (2026-11-01), n = 24 with 3 mm seeded at 60 µs (band ±8 mm between the secondary shock and the lead shock):
+  - The amplitude was 2.29 / 1.56 / 0.99 / 1.79 / 2.49 mm at 60 / 75 / 100 / 125 / 150 µs. The unseeded run had −0.56 mm at 100 µs and 0.07 mm at 150 µs.
+  - So the amplitude first dropped to 43%, then grew again, with an e-folding time of about 55 µs. Linear Rayleigh–Taylor theory gives about 40 µs.
+  - Two possible causes of the drop, not separated: a transient of the displacement-only seed (no matching velocity perturbation), or numerical diffusion while the contact moves at 2–2.6 km/s across 2 mm cells.
+  - Options:
+    - (1) seed later, when the contact is slower: t0 = 200 µs (contact at 0.495 m, secondary and lead shock 40 and 70 mm away), band ±25 mm, 6 mm (n = 24: 5.4 mm on the contact against 0.8 mm grid noise);
+    - (2) seed at 60 µs with the mixing layer at 1 mm (`-fine`);
+    - (3) seed the charge surface at t = 0 (as Balakrishnan et al.).
+  - Option 1 runs here. Options 2 and 3 are set up for a larger machine.
 
 ## G3c: Turbulence and combustion closures (WP 5.4)
 

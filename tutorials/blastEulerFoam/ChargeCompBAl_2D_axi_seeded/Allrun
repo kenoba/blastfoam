@@ -1,0 +1,179 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+
+# Seeded perturbation of the products/air contact (plan step G3b).
+#
+# ./Allrun [-t0 <time>] [-fine] [-np <n>] <seed>
+#     map the 1D solution at t0 (default 6e-05; the name of the 1D time
+#     directory, e.g. 0.0002) and displace its contact
+# ./Allrun -charge [-np <n>] <seed>
+#     run from 0 with the surface of the charge perturbed (2D detonation)
+#
+# -fine: products/air mixing layer at 1 mm (mixingLevel 4) instead of 2 mm
+# -np:   number of processes (default 6)
+# <seed> (perturb_contact.py): --modes n:amp [n:amp ...] (amp in m) or
+#        --multimode nmin nmax rms [--seed s]
+
+t0=6e-05
+charge=no
+fine=no
+np=6
+while [ $# -gt 0 ]
+do
+    case "$1" in
+        -t0) t0=$2; shift 2 ;;
+        -fine) fine=yes; shift ;;
+        -charge) charge=yes; shift ;;
+        -np) np=$2; shift 2 ;;
+        *) break ;;
+    esac
+done
+if [ $# -eq 0 ]
+then
+    echo "usage: ./Allrun [-t0 time | -charge] [-fine] [-np n]" \
+         "--modes n:amp ... | --multimode nmin nmax rms [--seed s]" >&2
+    exit 1
+fi
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Clean previous 2D results
+rm -rf [1-9]* 0.[0-9]* postProcessing log.* constant/polyMesh dynamicCode processor*
+
+# Options are written into the case dictionaries each time (so that a later
+# run without them is reset)
+foamDictionary -entry numberOfSubdomains -set "$np" system/decomposeParDict
+if [ "$fine" = yes ]
+then
+    foamDictionary -entry mixingLevel -set 4 constant/dynamicMeshDict
+else
+    foamDictionary -entry mixingLevel -set 3 constant/dynamicMeshDict
+fi
+# The fixes for detonation along an oblique charge surface
+# (ChargeCompBAl_2D_axi_cylinder), for -charge only: explosive expanded below
+# half its density burns, and only the reacted part equilibrates with the gas
+python3 - "$charge" <<'PYEOF' || exit 1
+import re, sys
+on = sys.argv[1] == "yes"
+p = "constant/physicalProperties.compBAl"
+s = re.sub(r"\n  expansionBurnRatio [^;]*;", "", open(p).read())
+if on:
+    s = s.replace("  burnModel programmed;\n",
+                  "  burnModel programmed;\n  expansionBurnRatio 0.5;\n", 1)
+open(p, "w").write(s)
+p = "constant/phaseProperties"
+s = re.sub(r"\n        field           lambda.compBAl;", "", open(p).read())
+if on:
+    i = s.index("(compBAl in gas)")
+    j = s.index("Kh", i)
+    j = s.index("\n", j)
+    s = s[:j] + "\n        field           lambda.compBAl;" + s[j:]
+open(p, "w").write(s)
+PYEOF
+sed -i -e "s/^        radius [0-9.e-]*;/        radius 0.05;/" \
+    -e "s/^            radius [0-9.e-]*;/            radius 0.06;/" system/setFieldsDict
+echo "$0 $*: t0 $t0, charge $charge, fine $fine, $np processes" > log.Allrun
+
+if [ "$charge" = yes ]
+then
+    # -- Run from 0: the charge set and refined in parallel (as in
+    #    ChargeCompBAl_2D_axi_cylinder) as a sphere of radius
+    #    r0 + max(delta), then the cells beyond r0 + delta(psi) reset to air
+    r0=0.05
+    dmax=$(python3 perturb_contact.py maxdisp "$@") || exit 1
+    # (the region list is not addressable by foamDictionary)
+    sed -i -e "s/^        radius [0-9.e-]*;/        radius $(python3 -c "print($r0 + $dmax)");/" \
+        -e "s/^            radius [0-9.e-]*;/            radius $(python3 -c "print($r0 + $dmax + 0.01)");/" \
+        system/setFieldsDict
+
+    runApplication blockMesh
+    for f in 0/*.orig
+    do
+        cp "$f" "0/$(basename "$f" .orig)"
+    done
+    runApplication decomposePar
+    runParallel setRefinedFields
+    time=0
+    seedArgs="charge $r0"
+else
+    # Start time of the 2D run: the 1D solution at t0 is mapped onto the 2D
+    # mesh (the flow is spherically symmetric up to then, and the detonation
+    # and breakout at 0.5 mm are the most expensive part in 2D)
+
+    # -- 1D spherical case to t0 (ChargeCompBAl_1D_spherical_2m, E2 full setup)
+    oneD=oneD
+    if [ ! -d "$oneD/$t0" ]
+    then
+        rm -rf "${oneD:?}"
+        mkdir "$oneD"
+        cp -r ../ChargeCompBAl_1D_spherical_2m/0 \
+              ../ChargeCompBAl_1D_spherical_2m/constant \
+              ../ChargeCompBAl_1D_spherical_2m/system \
+              ../ChargeCompBAl_1D_spherical_2m/Allrun "$oneD"/
+        (
+            cd "$oneD" || exit 1
+            python3 ../../ChargeCompBAl_1D_spherical_2m/setup_e2.py --variant full
+            foamDictionary -entry endTime -set "$t0" system/controlDict
+            foamDictionary -entry writeInterval -set "$t0" system/controlDict
+            ./Allrun
+        )
+        if [ ! -d "$oneD/$t0" ]
+        then
+            echo "no 1D time directory $oneD/$t0 (give t0 as its name)" >&2
+            exit 1
+        fi
+    fi
+
+    # -- Base mesh and the fields at t0
+    runApplication blockMesh
+    mkdir "$t0"
+    for f in 0/*.orig
+    do
+        cp "$f" "$t0/$(basename "$f" .orig)"
+    done
+
+    # -- Map the 1D solution in parallel (each processor then keeps its
+    #    refinement history, which decomposePar does not decompose), refining
+    #    the mesh with constant/dynamicMeshDict; all fields of the 1D case
+    #    except the derived phase pressures and post-processing fields (cell
+    #    volumes and centres)
+    runApplication decomposePar
+    fields=$(ls "$oneD/$t0" | grep -v -x -e uniform -e pTemporalMax \
+        -e p.compBAl -e p.gas -e p.Al -e Ptot.Al -e Qdot.gas -e V -e Vc -e C \
+        -e Ccx -e Ccy -e Ccz | tr '\n' ' ')
+    runParallel rotateFields "$(pwd)/$oneD" -sourceTime "$t0" \
+        -sourceCentre '(0 0 0)' -centre '(0 0 0)' \
+        -additionalFields "($fields)" -refine -extend
+    if ! grep -q "^Finished" log.rotateFields
+    then
+        echo "rotateFields failed: see log.rotateFields" >&2
+        exit 1
+    fi
+    time=$t0
+    # Band half-width: 8 mm at 60 us (secondary and lead shock 13 and 16 mm
+    # from the contact), 25 mm later (40 and 70 mm at 200 us)
+    case "$t0" in
+        6e-05) seedArgs="map $oneD/$t0 $t0" ;;
+        *) seedArgs="map $oneD/$t0 $t0 --halfwidth 0.025" ;;
+    esac
+fi
+
+# -- Seed the perturbation
+runParallel postProcess -func writeCellCentres -time "$time"
+python3 perturb_contact.py $seedArgs "$@" > log.perturb_contact 2>&1 || {
+    echo "perturb_contact.py failed: see log.perturb_contact" >&2
+    exit 1
+}
+for d in processor*
+do
+    rm -f "${d:?}/${time:?}"/C "${d:?}/${time:?}"/Ccx "${d:?}/${time:?}"/Ccy \
+        "${d:?}/${time:?}"/Ccz
+done
+
+touch ChargeCompBAl_2D_axi_seeded.foam
+
+# -- Run calculation in parallel (system/decomposeParDict)
+runParallel $(getApplication)
+
+# ----------------------------------------------------------------- end-of-file
