@@ -7,28 +7,13 @@ This checkout is a fork (`origin` = `github.com:kenoba/blastfoam`, branch `devel
 
 The aluminised-charge problems target **blastEulerFoam** (multi-fluid: per-phase mass, momentum and total energy, with finite-rate velocity/temperature/pressure relaxation). blastFoam's two-/multiphase systems use a single mixture energy and velocity.
 
-### Key Technologies
-- **OpenFOAM 12** (`BLAST_OF_VERSION=12`; the top-level `Allwmake` refuses other versions).
-- **C++** with OpenFOAM `wmake`; **MPI** for parallel runs; **Python 3 + numpy** for test verification and report tooling.
-
 ## Project Structure
-- `src/`: libraries, built by `src/Allwmake` in this order: `numerics`, `finiteVolume`, `diameterModels`, `thermodynamicModels`, `radiationModels`, `MomentumTransportModels`, `compressibleSystem`, `polyTopoChange`, `functionObjects`, `regionModels`, `errorEstimators`, `fvMotionSolvers`, `fvMeshTopoChangers`, `fvMeshDistributors`, `atmosphereModels`, `solidModels`, `levelSet`, `FieldSetTypes`, then `regionSolvers/Allwmake` and `solids4Foam/Allwmake`.
-    - `numerics` (`libblastNumerics`): generic maths: root finding, minimisation, integrators, lookup tables, least squares, `Function3/4`.
-    - `finiteVolume` (`libblastFiniteVolume`): flux schemes (HLLC, AUSM+, Kurganov, Tadmor, … in `fluxSchemes/`), reconstruction, time integrators, cell sources.
-    - `thermodynamicModels` (`libblastThermodynamics`): EOS (`specie/equationOfStates/equationOfStates/`: JWL, eJWLC, AbelNobel, Murnaghan, BKW, …), blast thermo classes (`derived/`), activation/programmed burn, afterburn, chemistry and combustion, cavitation/phase change, and `fvModels/pressurePhaseChange`.
-    - `compressibleSystem`: flow systems. Base class at `compressibleSystem/compressibleSystem/compressibleSystem.H`, plus `compressibleBlastSystem`, single/two/multiphase(-interface) variants and `coupledSystems`.
-    - AMR / load balancing: `fvMeshTopoChangers` (`fvMeshRefiner`), `errorEstimators`, `polyTopoChange`, `fvMeshDistributors`.
-    - `functionObjects`: includes `temporalMax` and `temporalIntegral` (peak and impulse tracking).
 - `applications/`: built by `applications/Allwmake` in the order `utilities`, then `modules`, then `solvers`.
-    - `solvers/`: `blastFoam`, `blastEulerFoam`, `blastParcelFoam`, `blastReactingFoam`, `blastRegionFoam`, `blastXiFoam`, `blastFESolid`, `blastOptimization`, `solidFoam`. Each is a standalone `main()`.
     - `modules/`: solver-module libraries `libblast{Euler,Parcel,Reacting,Solid,Xi}`. Most Euler–Euler multiphase physics lives in `modules/blastEuler` (`phaseSystems`, `interfacialModels` (drag, heat transfer), `kineticTheoryModels`). `modules/blast` has no `Make/` and is not built.
-    - `utilities/`: e.g. `setRefinedFields`, `addInternalPatch`, `addEmptyPatch`, `blastToVTK`, `calculateImpulse`, `initializeAtmosphere`, `mergeProbes`.
     - `test/Test-*`: unit-test applications; not built by `Allwmake`.
 - `tests/`: the fork's verification cases (`0D/`, `1D/`, `1D_spherical/`, `2D_axi/`), each with a `verify_*.py` script. `2D_axi/ChargeCompBAl_2D_axi_spherical` runs on 6 processes with AMR and compares with the results of `1D_spherical/ChargeCompBAl_1D_spherical`.
-- `tutorials/`: example cases. `validation/`: upstream validation cases.
 - `bin/run_blast_tests.py`: regression test runner. `utilities/` (top level): `thermo_fitter/` (eJWLC / Abel-Nobel fitter `fit_ejwlc_nobleabel.py`; `compute_omegaT.py` computes the eJWLC `omegaT` for a case; `products_only_fit.py` the Comp-B/Al entries from the EuDetCode output in `eudet_compBAl/`; `ejwlc_cj_entries.py` eJWLC entries through the CJ point without transfer (`eudet_compB/`, planar tests); `check_programmed_burn.py` checks that vDet is not below the CJ speed of the products EOS of a case, otherwise the front is overdriven and its pressure grows without bound) `mechanism/` (`make_gas_mechanism.py`: reversible GRI-3.0 H2/O2/CO/C1 subset for the gas phase below `Teq`, written to the cases' `constant/reactions.gas`; `cantera_cv_ignition.cpp`: Cantera reference reactor) and `generate_report_figures.py` (report figures from test results under `$BLAST_RESULTS_DIR`, default the repository; run the tests in a copy, e.g. `BLASTFOAM_ROOT=<copy> bin/run_blast_tests.py --tier all`, then point `BLAST_RESULTS_DIR` at it).
 - `report/`: `development_plan.md` (staged plan with current status), `stage*_*.md` (per-stage plans), `dilute_phase_conservation_plan.md` (conservative decode and dilute phases), `TBX-blastFoam.tex` (technical report).
-- `etc/`: `bashrc` and code templates. `Makefile`, `Dockerfile`, `debian/`: packaging.
 
 ## Building and Running
 
@@ -49,9 +34,6 @@ wmake                # inside a single library/application directory
 - Check the build log for `error`/`undefined` lines. `Allwmake` itself can exit 0 even when sub-builds failed.
 
 ### Running a Case
-1. Mesh: `blockMesh` (or `snappyHexMesh`).
-2. Initial fields: `setRefinedFields` or `setFields` (the 0D tests use `python3 ../setup_case.py`).
-3. Solve: `blastFoam` / `blastEulerFoam` / … (serial) or `mpirun -np <N> <solver> -parallel`.
 
 AMR in parallel: `decomposePar` does not decompose the `refinementHistory`, so cells refined before it can never be coarsened. Refine or map the initial fields after `decomposePar` (e.g. `rotateFields -refine` in parallel, as in `tutorials/blastEulerFoam/ChargeCompBAl_2D_axi_2m`). A case started from a mapped solution sets `beginTime 0` in `controlDict` so that it counts as a restart (otherwise the activation model adds the detonation energy a second time). Load balancing (`redistributor`) needs an empty `internal` patch in the mesh.
 
@@ -75,12 +57,3 @@ python3 bin/run_blast_tests.py --tier 0|1|2|3|all [--case <relpath>] [--report b
 - **Conservation in blastEulerFoam:** interphase transfer must move mass, momentum and energy together. The phase `decode()` functions may modify the conserved variables (`alphaRho`, `alphaRhoU`, `alphaRhoE`) only where a phase is residual; bounds elsewhere act on the primitives only. Do not blend primitives without changing the conserved fields (the fluxes are built from the primitives). Dilute fluid phases are kept near pressure equilibrium by `phaseSystem::equilibrateDiluteVolumes()` (`alphaDilute`), which exchanges only volume and the pΔα work; with `alphaDilute 1` plus a stiff `constantCoefficient` products/gas heat transfer, mixed cells reach pressure and temperature equilibrium (used in the Comp-B/Al cases). Couple phases through the mixture pressure, not through individual phase pressures, which are undefined where a phase is absent. `residualRho` is the reference density of residual cells, not a density floor. Granular packing must be limited by the frictional stress: use a small `alphaDeltaMin` (≤ 1e-3; 0.05 caps the stress at ~10 kPa), since the `alphaMax` bound in `decode()` then stores the excess mass as overdense grains. Trace fluid phases at a face take the mixture impedance in HLLC with `alphaTrace` (`phaseProperties`, 1e-3 in the Comp-B/Al cases; without it a trace of explosive at the charge/air interface acts with the explosive's impedance and the interface goes unstable). `tests/1D_spherical/ChargeCompBAl_1D_spherical_interface` checks this; background in `report/dilute_phase_conservation_plan.md`. The phase HLLC flux blends towards HLL near shocks by default (`hybridHLL`, pressure-ratio sensor; against the carbuncle at grid-aligned shocks, e.g. the axis of 2D axisymmetric cases); `hybridHLL no` in `fluxSchemes.<phase>` gives the plain HLLC.
 - **Comp-B/Al cases with a separate Al phase** use the EuDetCode products-only eJWLC fit (`--jwl-products-only`, ρ0 = 1624.45) with α_compBAl = 0.818, α_Al = 0.182 (27% inert Al by mass at 1820 kg/m³); the full fit (ρ0 = 1820) already contains the Al. Al burning (`reactingDiameterModel`) is limited to gas-phase oxidiser via `oxidiserPhase`/`oxidiserSpecies`/`YoxidiserRef`. The fit values (current EuDetCode: D = 7154 m/s) and the products `E0`/`omegaT`/initiation `e0` come from `utilities/thermo_fitter/products_only_fit.py`; `E0` uses the blastFoam gas sensible energy $\sum Y_k(h_{s,k} - R_k T)$. In the reacting spherical cases the gas has 24 species with `nasa9` thermo (three ranges to 20 000 K, `constant/thermo.nasa9Gas` from `utilities/thermo_fitter/nasa9_species.py`, which uses `ChargeCompBAl_1D_spherical_reacting/constant/thermo.compressibleGas` as base data for b and transport) and Abel–Nobel EOS; the products `E0` depends on the gas thermo (recompute with `products_only_fit.py` after changing it). The inert cases and tutorials use JANAF air (`janafBlastThermo` extrapolates with constant Cp above 5000 K, no dissociation, so strongly shocked air is too hot there). the gas chemistry sets cells above `Teq` to local equilibrium at fixed (e, ρ) (`equilibrium { Teq 2500; }` in `chemistryProperties`, solver `src/thermodynamicModels/chemistryModel/equilibrium/blastChemicalEquilibrium`; frozen where it fails; finite rate below `Teq`; `report/phaseC_highT_equilibrium_plan.md`). The phase energies are sensible energies: energy checks with gas chemistry must add the gas formation enthalpy and subtract that of the transferred products (as in `tests/1D_spherical/verify_spherical_compBAl_reacting.py`).
 - **Keep docs in sync:** after code changes, update `UPDATES.md` (changelog relative to `71b97fd7`) and the Status columns in `report/development_plan.md`.
-
-## Key Files
-- `etc/bashrc`: environment variables (`BLAST_DIR`, `BLAST_APPBIN`, `BLAST_LIBBIN`, `BLAST_OF_VERSION`).
-- `src/compressibleSystem/compressibleSystem/compressibleSystem.H`: base class for the compressible flow systems.
-- `applications/solvers/blastFoam/blastFoam.C`: main solver entry point.
-- `src/thermodynamicModels/fvModels/pressurePhaseChange/`: pressure-driven condensed → gas phase transfer.
-- `UPDATES.md`: changes made in this fork, with known issues.
-- `report/development_plan.md`: stage plan and current status.
-- `BlastFoam_User_Guide.pdf`: upstream user and theory guide.
