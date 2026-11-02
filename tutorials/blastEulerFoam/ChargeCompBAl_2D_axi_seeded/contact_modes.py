@@ -12,7 +12,8 @@ with postProcess -func writeCellCentres / writeCellVolumes):
 - on rays at angles psi from the symmetry plane (psiMin to psiMax), the
   contact radius R(psi) = r_core + int_{r > r_core} f dr, r_core the outer
   edge of the last cell with f > 0.99, and the mixing width
-  W(psi) = int 4 f (1 - f) dr;
+  W(psi) = int_{r > R/2} 4 f (1 - f) dr (the outer half of the ray, so that
+  mixed gas at the centre, where all rays meet, is not counted);
 - the amplitude of each mode n over the window,
   a_n = 2/(psiMax - psiMin) int (R - <R>) cos(n psi), and the ray-averaged
   R and W;
@@ -109,7 +110,11 @@ def analyse(f, modes, psimin, psimax, dbin):
         core = np.where(ff > 0.99)[0]
         k = core[-1] if len(core) else 0
         R[i] = rr[k] + 0.5*dd[k] + np.sum(ff[k + 1:]*dd[k + 1:])
-        W[i] = np.sum(4*ff*(1 - ff)*dd)
+        # Width of the contact only: the rays of all angles meet at the
+        # centre, where air carried in along the symmetry plane (G2b) would
+        # count on every ray once the re-shock reflects there (t > 1.2 ms)
+        outer = rr > 0.5*R[i]
+        W[i] = np.sum((4*ff*(1 - ff)*dd)[outer])
     th = np.radians(mid)
     span = np.radians(psimax - psimin)
     amps = {n: 2/span*np.sum((R - R.mean())*np.cos(n*th))*np.radians(dbin)

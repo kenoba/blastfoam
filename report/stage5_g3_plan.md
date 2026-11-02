@@ -48,7 +48,7 @@ grid noise near the axis is a few per cent of the radial velocity).
   - `-fine` holds the mixing layer at 1 mm instead of 2 mm; `-np` sets the number of processes.
 - Diagnostics (`contact_modes.py`), on rays in the window 22.5–67.5°:
   - contact radius R(ψ): the edge of the products core plus the products path length beyond it;
-  - mixing width W(ψ) = ∫ 4f(1 − f) dr, with f the products fraction from the C/(C + N) element ratio of the gas;
+  - mixing width W(ψ) = ∫ 4f(1 − f) dr over the outer half of the ray (r > R/2), with f the products fraction from the C/(C + N) element ratio of the gas;
   - mode amplitudes over the window;
   - CO and H2 mass of the gas.
 - 1D contact (G2b 1D run): Rayleigh–Taylor unstable from 60 µs to 1.3 ms. Inside are denser products, the contact decelerates, and the Atwood number runs from −0.25 (60–200 µs) to −0.05 (1.3 ms). The contact stops at 0.755 m at 0.74 ms and then moves inwards.
@@ -71,7 +71,23 @@ grid noise near the axis is a few per cent of the radial velocity).
     - (1) seed later, when the contact is slower: t0 = 200 µs (contact at 0.495 m, secondary and lead shock 40 and 70 mm away), band ±25 mm, 6 mm (n = 24: 5.4 mm on the contact against 0.8 mm grid noise);
     - (2) seed at 60 µs with the mixing layer at 1 mm (`-fine`);
     - (3) seed the charge surface at t = 0 (as Balakrishnan et al.).
-  - Option 1 runs here. Options 2 and 3 are set up for a larger machine.
+  - Option 1 ran here (2026-11-02, below). Options 2 and 3 are set up for a larger machine (`results/G3b_cases_elsewhere/`).
+- Option 1 result (2026-11-02): n = 24 with 6 mm seeded at 200 µs (5.4 mm measured on the contact), run to 1.3 ms (13.8 h compute on 6 processes, up to 63 000 cells). Results and diagnostics in `results/G3b_seeded_n24_t200/` (`diagnostics/g3b_option1.png`).
+
+  | t | n = 24 amplitude, seeded / unseeded | n = 48 amplitude, seeded / unseeded | Scatter of R, seeded / unseeded | W, seeded / unseeded | CO burnt since 200 µs, seeded / unseeded |
+  |---|---|---|---|---|---|
+  | 200 µs | 5.4 / 0.8 mm | 0.7 / 0.7 mm | 4.5 / 2.4 mm | 20 / 18 mm | – |
+  | 400 µs | 9.4 / −1.3 | −0.7 / 0.4 | 7.3 / 2.8 | 33 / 30 | 1.85 / 1.99 g |
+  | 600 µs | 25.0 / −1.7 | 2.5 / 2.9 | 18.3 / 7.3 | 49 / 44 | 2.35 / 2.44 |
+  | 800 µs | 49.1 / −2.2 | 4.8 / 4.9 | 35.3 / 13.0 | 69 / 60 | 2.54 / 2.63 |
+  | 1 ms | 78.0 / −5.4 | 9.6 / 6.4 | 56.0 / 23.4 | 89 / 76 | 2.64 / 2.72 |
+  | 1.3 ms | 113.3 / −6.0 | 16.4 / 5.8 | 81.4 / 34.2 | 118 / 97 | 2.80 / 2.82 |
+
+  - The seeded mode first dropped to 4.6 mm at 250 µs (as in the 60 µs test, but only by 14%), then grew exponentially to about 0.6 ms with an e-folding time of about 200 µs (250–550 µs), and linearly from 0.6 ms at about 12.6 mm per 100 µs. At 1.3 ms the amplitude is 0.66 of the wavelength (172 mm at the contact radius 0.66 m), so the mode is nonlinear: the n = 48 harmonic grows from about 1 ms to 2.8 times its unseeded level.
+  - The re-shock (the secondary shock reflected at the centre at about 1 ms; outward at about 0.9 km/s, at 0.18 m at 1.2 ms and 0.27 m at 1.3 ms) has not reached the contact by 1.3 ms; the growth rate does not change.
+  - The mixing width is 12% larger than unseeded at 0.6 ms and 22% at 1.3 ms (it grows by 10 against 8 mm per 100 µs from 0.6 ms).
+  - The CO burnout is the same within 0.1 g (2.80 against 2.82 g since 200 µs, of 103 g). In both runs the CO is nearly constant from about 0.9 ms: the burning stops as the mixed gas cools, not for lack of mixing surface. A strongly perturbed contact changes the shape of the fireball, but not the afterburning to 1.3 ms. (The seeded run starts from the 1D state at 200 µs, which holds 1.3 g more CO than the 2D G2b run, burnt in G2b before 200 µs by its wider early layer.)
+  - Diagnostic: `contact_modes.py` integrates W over the outer half of each ray (r > R/2) since 2026-11-02. In G2b the air that the symmetry-plane jet carries into the fireball (about 2 g at ψ < 10° by 1.3 ms) reaches the centre, where the products fraction falls to about 0.8 after the reflected secondary shock (1.2–1.3 ms); all rays pass through the centre, so the full-ray W of G2b jumped from 105 to 132 mm between 1.2 and 1.3 ms. The table uses the outer-half W.
 
 ## G3c: Turbulence and combustion closures (WP 5.4)
 
