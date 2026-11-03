@@ -1,0 +1,16 @@
+A: 206.878
+B: 3.07847
+C: 1.22827
+R1: 3.62575
+R2: 0.886554
+omega: 0.269258
+Cv: 1889.75
+E0_mass: -5.07728e+06
+E0_GPa: -8.32929
+GurneyEnergy: 5.07728e+06
+GurneyVelocity: 3186.62
+active_mass_fraction: 0.82517
+active_molar_mass: 0.0211885
+active_rho0: 1640.5
+active_rho_cj: 2152.42
+active_e0_mass: -320967

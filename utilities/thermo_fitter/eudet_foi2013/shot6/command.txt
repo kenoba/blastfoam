@@ -1,0 +1,1 @@
+/opt/OpenFOAM/blastfoam/external/eudetcode/build/src/CJDetonation "TNT:0.777025 PETN:0.024698 Mineral-Oil:0.004021 Al:0.194256" 1761.20 BKW --inert Al(s):0.9 --jwl-products-only -o /opt/OpenFOAM/blastfoam/utilities/thermo_fitter/eudet_foi2013/shot6

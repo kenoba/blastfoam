@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Peak overpressure, arrival time (5% overpressure) and positive impulse at
-the pressure probes of a Pontalier case (ambient p0 from charge.txt)."""
+the pressure probes of a Pontalier or FOI 1D case (ambient p0 from
+charge.txt; restarts concatenated)."""
 
 import os
 import re
@@ -10,10 +11,16 @@ import numpy as np
 case = os.path.dirname(os.path.abspath(__file__))
 info = open(os.path.join(case, "charge.txt")).read().split()
 p0 = float(info[info.index("p0") + 1])
-path = os.path.join(case, "postProcessing", "pressureProbes", "0", "p")
-radii = [float(re.search(r"\(([^ ]+)", line).group(1))
-         for line in open(path) if line.startswith("# Probe")]
-d = np.loadtxt(path)
+# all start times of the probes (a restarted run writes a new directory)
+base = os.path.join(case, "postProcessing", "pressureProbes")
+parts = []
+for start in sorted(os.listdir(base), key=float):
+    path = os.path.join(base, start, "p")
+    radii = [float(re.search(r"\(([^ ]+)", line).group(1))
+             for line in open(path) if line.startswith("# Probe")]
+    a = np.loadtxt(path, ndmin=2)
+    parts.append(a[a[:, 0] > parts[-1][-1, 0]] if parts else a)
+d = np.vstack(parts)
 t = d[:, 0]
 
 print(" ".join(info[:4]), f"p0 {p0:.0f} Pa")
