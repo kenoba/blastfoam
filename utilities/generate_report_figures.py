@@ -1343,6 +1343,207 @@ def fig_stage5_axis_mesh():
     save(fig, "stage5_axis_mesh")
 
 
+def fig_stage5_g3a_cylinders():
+    """Centre-initiated Comp-B/Al cylinders L/D 1 and 4 (plan step G3a,
+    early times of the parked runs): peak overpressure over that of the 1D
+    sphere of the same mass against the angle, from
+    $G2_RESULTS_DIR/G3a_cylinders_early/g3_early_table.txt (written by
+    g3_early.py there), with the fit of Gao et al. (2022) for L/D 4
+    (utilities/cylinder_blast_reference.py)."""
+    sys.path.insert(0, os.path.join(CODE, "utilities"))
+    import cylinder_blast_reference as gao
+    base = os.environ.get("G2_RESULTS_DIR")
+    if not base:
+        raise FileNotFoundError("G2_RESULTS_DIR not set (directory of the G2/G3 runs)")
+    table = os.path.join(base, "G3a_cylinders_early", "g3_early_table.txt")
+    rows, sph2 = [], {}
+    part = 0
+    for line in open(table):
+        f = line.split()
+        if line.startswith("Sphere (2D"):
+            part = 2
+            continue
+        if part == 0 and len(f) == 7 and f[0].isdigit():
+            rows.append((int(f[0]), float(f[1]), int(f[2]), float(f[5]), float(f[6])))
+        elif part == 2 and f:
+            r = float(f[0].rstrip(":"))
+            sph2[r] = [(int(x.split(":")[0]), float(x.split(":")[1])) for x in f[1:]]
+    W = 0.953
+    fig, axs = plt.subplots(1, 3, figsize=(12, 3.8))
+    colours = {0.3: "C0", 0.5: "C3"}
+    for i, ld in enumerate((1, 4)):
+        ax = axs[i]
+        for r in (0.3, 0.5):
+            sel = sorted((a, sp) for l, rr, a, sp, _ in rows if l == ld and rr == r)
+            if sel:
+                ax.plot(*zip(*sel), "o-", color=colours[r], ms=4, label=f"run, {r} m")
+            if ld == 4:
+                aa = np.linspace(0, 90, 91)
+                Z = r/W**(1/3)
+                ax.plot(aa, [gao.shape_factor(Z, a, ld) for a in aa], "--",
+                        color=colours[r], label=f"Gao et al. fit, {r} m")
+            if r in sph2:
+                ax.plot(*zip(*sph2[r]), ":", color=colours[r], lw=1,
+                        label=f"2D sphere (G2b), {r} m")
+        ax.axhline(1, color="k", lw=0.8)
+        ax.set_title(f"({'ab'[i]}) L/D {ld}: peak overpressure / sphere")
+        ax.set_xlabel("Angle from the mid-plane [deg]")
+        ax.set_xticks(range(0, 91, 15))
+        ax.grid(True)
+        ax.legend(fontsize=7)
+    for ld, mk in ((1, "o"), (4, "s")):
+        for r in (0.3, 0.5):
+            sel = sorted((a, ta) for l, rr, a, _, ta in rows if l == ld and rr == r)
+            if sel:
+                axs[2].plot(*zip(*sel), marker=mk, ls="-" if ld == 1 else "--",
+                            color=colours[r], ms=4, label=f"L/D {ld}, {r} m")
+    axs[2].axhline(1, color="k", lw=0.8)
+    axs[2].set_title("(c) Shock arrival / sphere")
+    axs[2].set_xlabel("Angle from the mid-plane [deg]")
+    axs[2].set_xticks(range(0, 91, 15))
+    axs[2].grid(True)
+    axs[2].legend(fontsize=7)
+    save(fig, "stage5_g3a_cylinders")
+
+
+def fig_stage5_g3b_seeded():
+    """Seeded products/air contact (plan step G3b, option 1: n = 24, 6 mm
+    at 200 us) against the unseeded G2b run, from the contact_modes.py
+    output in $G2_RESULTS_DIR/G3b_seeded_n24_t200/diagnostics: mode
+    amplitudes, mixing width and contact scatter, CO burnt, and the contact
+    radius against the angle at 1.3 ms."""
+    base = os.environ.get("G2_RESULTS_DIR")
+    if not base:
+        raise FileNotFoundError("G2_RESULTS_DIR not set (directory of the G2/G3 runs)")
+    d = os.path.join(base, "G3b_seeded_n24_t200", "diagnostics")
+    s = np.genfromtxt(os.path.join(d, "seeded.csv"), delimiter=",", names=True)
+    g = np.genfromtxt(os.path.join(d, "g2b_unseeded.csv"), delimiter=",", names=True)
+    g = g[g["t"] >= 2e-4 - 1e-9]
+    fig, axs = plt.subplots(1, 4, figsize=(15, 3.8))
+    for run, lab, st in ((s, "seeded", "-o"), (g, "unseeded (G2b)", "--s")):
+        t = run["t"]*1e3
+        axs[0].semilogy(t, np.abs(run["a24"])*1e3, st, color="C0", ms=3,
+                        label=f"$|a_{{24}}|$, {lab}")
+        axs[0].semilogy(t, np.abs(run["a48"])*1e3, st, color="C1", ms=3,
+                        label=f"$|a_{{48}}|$, {lab}")
+        axs[1].plot(t, run["W_mean"]*1e3, st, color="C0", ms=3, label=f"$W$, {lab}")
+        axs[1].plot(t, run["R_sd"]*1e3, st, color="C2", ms=3,
+                    label=f"scatter of $R$, {lab}")
+        axs[2].plot(t, (run["m_CO"][0] - run["m_CO"])*1e3, st, color="C3", ms=3,
+                    label=lab)
+    for f, lab, st in (("seeded_prof.txt", "seeded", "-"),
+                       ("g2b_unseeded_prof.txt", "unseeded (G2b)", "--")):
+        a = np.loadtxt(os.path.join(d, f))
+        a = a[np.isclose(a[:, 0], 1.3e-3)]
+        axs[3].plot(a[:, 1], a[:, 2], st, label=f"{lab}, 1.3 ms")
+    axs[0].set_ylabel("Mode amplitude [mm]")
+    axs[0].set_title("(a) Modes n = 24 and 48")
+    axs[1].set_ylabel("[mm]")
+    axs[1].set_title("(b) Mixing width, contact scatter")
+    axs[2].set_ylabel("CO burnt since 0.2 ms [g]")
+    axs[2].set_title("(c) CO burnt")
+    axs[3].set_xlabel("Angle from the symmetry plane [deg]")
+    axs[3].set_ylabel("Contact radius $R$ [m]")
+    axs[3].set_title("(d) Contact at 1.3 ms")
+    for ax in axs[:3]:
+        ax.set_xlabel("t [ms]")
+    for ax in axs:
+        ax.grid(True)
+        ax.legend(fontsize=7)
+    save(fig, "stage5_g3b_seeded")
+
+
+def fig_stage5_g3c_closures():
+    """Turbulence and combustion closures on the 1D 2 m Comp-B/Al case (plan
+    step G3c, $G2_RESULTS_DIR/G3c_1D_closures: laminar, k-omega SST, SST with
+    PaSR, laminar with PaSR on the cell-size mixing time): CO and H2 mass,
+    PaSR factor kappa in the mixing layer, overpressure at 0.3 and 0.5 m,
+    and the SST eddy viscosity."""
+    sys.path.insert(0, os.path.join(CODE, "tutorials/blastEulerFoam/ChargeCompBAl_2D_axi_seeded"))
+    import contact_modes as cm
+    base = os.environ.get("G2_RESULTS_DIR")
+    if not base:
+        raise FileNotFoundError("G2_RESULTS_DIR not set (directory of the G2/G3 runs)")
+    root = os.path.join(base, "G3c_1D_closures")
+    runs = (("lam", "laminar", "k", "-"), ("sst", "SST", "C0", "--"),
+            ("pasr", "SST + PaSR", "C3", "-"), ("pasrd", "PaSR, cell size", "C2", "-."))
+
+    def times(c):
+        return sorted((t for t in os.listdir(os.path.join(root, c))
+                       if re.match(r"^[0-9.e-]+$", t) and t != "0"
+                       and os.path.exists(os.path.join(root, c, t, "C"))), key=float)
+
+    data = {}
+    for c, *_ in runs:
+        rows = []
+        for t in times(c):
+            dd = os.path.join(root, c, t)
+            f = cm.load([dd])
+            x, V = f["C"][:, 0], f["V"]
+            fac = 4/3*np.pi*(x.max() + 0.5*(x[-1] - x[-2]))**3/V.sum()
+            wc = sum(f[s]*n*12.011/M for s, (n, _, M) in cm.CN.items())
+            wn = sum(f[s]*n*14.007/M for s, (_, n, M) in cm.CN.items())
+            phi = np.where(wc + wn > 1e-12, wc/np.maximum(wc + wn, 1e-30), 0)
+            fp = np.clip((f["alpha.compBAl"] + f["alpha.gas"]*np.clip(phi/cm.PHI_P, 0, 1))
+                         / np.maximum(1 - f["alpha.Al"], 1e-6), 0, 1)
+            mix = (fp > 0.05) & (fp < 0.95)
+            n = len(x)
+            kp = os.path.join(dd, "PaSR:kappa.gas")
+            kappa = np.median(cm.read(kp, n)[mix]) if os.path.exists(kp) else np.nan
+            nf = os.path.join(dd, "nut.gas")
+            nut = cm.read(nf, n) if os.path.exists(nf) else np.zeros(n)
+            rows.append((float(t), fac*np.sum(f["alphaRho.gas"]*f["CO"]*V),
+                         fac*np.sum(f["alphaRho.gas"]*f["H2"]*V), kappa,
+                         nut.max(), nut[mix].max() if mix.any() else 0))
+        data[c] = np.array(rows)
+
+    def probe(c, r):
+        f = os.path.join(root, c, "postProcessing/pressureProbes/0/p")
+        pos = [float(l.split("(")[1].split()[0]) for l in open(f) if l.startswith("# Probe")]
+        a = np.loadtxt(f, comments="#")
+        return a[:, 0], a[:, 1 + pos.index(r)] - 101325.0
+
+    fig, axs = plt.subplots(2, 3, figsize=(13, 7))
+    ax = axs.flat
+    for c, lab, col, ls in runs:
+        d = data[c]
+        t = d[:, 0]*1e3
+        ax[0].plot(t, d[:, 1]*1e3, ls, color=col, label=lab)
+        ax[1].plot(t, d[:, 2]*1e3, ls, color=col, label=lab)
+        if np.isfinite(d[:, 3]).any():
+            ax[2].semilogy(t, d[:, 3], ls, color=col, label=lab)
+        for r, mk in ((0.3, None), (0.5, None)):
+            tp, p = probe(c, r)
+            sel = tp <= 5e-4
+            ax[3 if r == 0.3 else 4].plot(tp[sel]*1e3, p[sel]/1e3, ls, color=col, lw=1.2,
+                                          label=lab)
+        if c == "sst":
+            ax[5].semilogy(t, np.maximum(d[:, 4], 1e-8), "-", color=col,
+                           label="SST, maximum")
+            ax[5].semilogy(t, np.maximum(d[:, 5], 1e-8), "--", color=col,
+                           label="SST, mixing layer")
+    ax[0].set_ylabel("CO [g]")
+    ax[0].set_title("(a) CO in the gas")
+    ax[1].set_ylabel("H$_2$ [g]")
+    ax[1].set_title("(b) H$_2$ in the gas")
+    ax[2].set_ylabel("Median $\\kappa$")
+    ax[2].set_title("(c) PaSR factor in the mixing layer")
+    ax[3].set_ylabel("Overpressure [kPa]")
+    ax[3].set_title("(d) 0.3 m")
+    ax[4].set_ylabel("Overpressure [kPa]")
+    ax[4].set_title("(e) 0.5 m")
+    ax[5].set_ylabel("$\\nu_t$ [m$^2$/s]")
+    ax[5].set_title("(f) SST eddy viscosity")
+    ax[0].set_ylim(150, 210)
+    ax[3].set_xlim(0.05, 0.25)
+    ax[4].set_xlim(0.12, 0.5)
+    for a in ax:
+        a.set_xlabel("t [ms]")
+        a.grid(True)
+        a.legend(fontsize=7)
+    save(fig, "stage5_g3c_closures")
+
+
 FIGURES = {
     "isentropes": fig_isentropes,
     "products_temperature": fig_products_temperature,
@@ -1363,6 +1564,9 @@ FIGURES = {
     "g2_fields": fig_stage5_g2_fields,
     "g2b_mixing": fig_stage5_g2b_mixing,
     "axis_mesh": fig_stage5_axis_mesh,
+    "g3a_cylinders": fig_stage5_g3a_cylinders,
+    "g3b_seeded": fig_stage5_g3b_seeded,
+    "g3c_closures": fig_stage5_g3c_closures,
 }
 
 

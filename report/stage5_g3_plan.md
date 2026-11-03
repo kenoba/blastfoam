@@ -93,6 +93,22 @@ grid noise near the axis is a few per cent of the radial velocity).
 
 - RANS (k-omega SST) and LES (WALE) on the G3b case, and PaSR for the gas
   chemistry; afterburning sensitivity to the closure.
+- 1D study first (2026-11-02; runs in `results/G3c_1D_closures/`: `lam`, `sst`, `pasr` = SST + PaSR, `pasrd` = laminar + PaSR with the cell-size mixing time). Each is the 1D 2 m case with `setup_e2.py --variant full`; the SST cases need k/omega/nut/alphat fields with wedge patches and a gas trace of 1e-6 in the charge (zero diagonal of the k/omega matrices otherwise, FPE).
+
+  | | Laminar | SST | SST + PaSR | PaSR, cell size |
+  |---|---|---|---|---|
+  | CO peak | 205.4 g | 205.4 g | 199.8 g | 200.2 g |
+  | CO burnt from the peak to 0.5 ms | 7.0 g | 7.0 g | ~0 | ~0 |
+  | H2 at 0.5 ms | 3.50 g | 3.50 g | 3.29 g | 3.40 g |
+  | Peak overpressure 0.3 / 0.5 m | 6312 / 3043 kPa | same | −1.9 / −1.2% | −2.1 / −1.4% |
+  | Positive impulse 0.3 / 0.5 m (to 0.5 ms) | 108.9 / 146.3 Pa s | same | −3.3 / −5.5% | −5.0 / −4.7% |
+  | Median κ in the mixing layer, 40 / 200 / 500 µs | – | – | 5e-7 / 5e-5 / 7e-4 | 4e-5 / 3e-4 / 0.53 |
+
+  - SST to 1.3 ms is identical to laminar (W within 0.3 mm, CO within 0.05 g). Its ν_t is produced at the secondary shock (compression, decaying ω; no ambient limiter in OpenFOAM-12), reaches 0.4–1.3 m²/s and reflects at the centre at about 1 ms; at the contact it is 2–3e-4 m²/s, a diffusion length of about 0.5 mm in 1 ms, below the cell size.
+  - Chemical times in the mixing layer are 5e-7 s (60 µs) to 3e-4 s (400 µs); RANS mixing times 0.44–0.7 s; cell-size times Δ²/(ν + ν_t) 17–120 ms, with a Smagorinsky ν of the full strain 2–12 ms. Every mm cell is under-resolved for the chemistry (resolved would need ~0.05 mm).
+  - `mixingTime delta` (new, 2026-11-02) uses the deviatoric strain only, which is small in 1D radial expansion, so the 1D run shows mostly Δ²/ν. κ rises to ~0.5 after 0.35 ms where the chemistry is slow, without effect on the burnout.
+  - Conclusion: on these meshes the afterburning depends on the treatment of mixing within a cell, not on the turbulence model. Laminar chemistry (all numerically mixed gas burns at the full rate) and PaSR (burns at the cell mixing rate, ms) are the two limits; in 1D they differ by 7 g CO (3.4% of the peak), 1–2% in peak and ~5% in impulse at 0.3–0.5 m.
+  - Next: the 2D G2b case with `mixingTime delta` against the laminar G2b run (about 18 h + 9%), where the Rayleigh–Taylor shear gives the Smagorinsky term weight.
 
 ## Status
 

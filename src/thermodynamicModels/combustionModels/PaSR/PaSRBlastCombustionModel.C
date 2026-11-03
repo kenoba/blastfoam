@@ -25,6 +25,9 @@ License
 
 #include "PaSRBlastCombustionModel.H"
 #include "addToRunTimeSelectionTable.H"
+#include "fvcGrad.H"
+#include "wedgeFvPatch.H"
+#include "emptyFvPatch.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -50,6 +53,8 @@ Foam::combustionModels::PaSR::PaSR
 :
     laminar(modelType, thermo, isFluid, combustionProperties),
     Cmix_(this->coeffs().template lookup<scalar>("Cmix")),
+    deltaMixing_(false),
+    Cs_(0.17),
     kappa_
     (
         IOobject
@@ -63,7 +68,9 @@ Foam::combustionModels::PaSR::PaSR
         this->mesh(),
         dimensionedScalar(dimless, 0)
     )
-{}
+{
+    readCoeffs();
+}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
@@ -72,11 +79,112 @@ Foam::combustionModels::PaSR::~PaSR()
 {}
 
 
+// * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void Foam::combustionModels::PaSR::readCoeffs()
+{
+    const word mixingTime
+    (
+        this->coeffs().lookupOrDefault<word>("mixingTime", "turbulent")
+    );
+
+    if (mixingTime == "delta")
+    {
+        deltaMixing_ = true;
+    }
+    else if (mixingTime == "turbulent")
+    {
+        deltaMixing_ = false;
+    }
+    else
+    {
+        FatalIOErrorInFunction(this->coeffs())
+            << "Unknown mixingTime " << mixingTime
+            << ", valid options are turbulent and delta"
+            << exit(FatalIOError);
+    }
+
+    Cs_ = this->coeffs().lookupOrDefault<scalar>("Cs", 0.17);
+}
+
+
+Foam::tmp<Foam::scalarField> Foam::combustionModels::PaSR::delta() const
+{
+    const fvMesh& mesh = this->mesh();
+    const vectorField& C = mesh.C();
+    const surfaceVectorField& Cf = mesh.Cf();
+    const surfaceVectorField& Sf = mesh.Sf();
+    const surfaceScalarField& magSf = mesh.magSf();
+    const labelUList& own = mesh.owner();
+    const labelUList& nei = mesh.neighbour();
+
+    scalarField sumD(mesh.nCells(), 0);
+    scalarField nD(mesh.nCells(), 0);
+
+    forAll(own, facei)
+    {
+        const vector n(Sf[facei]/magSf[facei]);
+        sumD[own[facei]] += mag((Cf[facei] - C[own[facei]]) & n);
+        sumD[nei[facei]] += mag((Cf[facei] - C[nei[facei]]) & n);
+        nD[own[facei]] += 1;
+        nD[nei[facei]] += 1;
+    }
+
+    forAll(mesh.boundary(), patchi)
+    {
+        const fvPatch& p = mesh.boundary()[patchi];
+        if (isA<wedgeFvPatch>(p) || isA<emptyFvPatch>(p))
+        {
+            continue;
+        }
+
+        const labelUList& fc = p.faceCells();
+        const vectorField& pCf = p.Cf();
+        const vectorField pn(p.nf());
+        forAll(fc, i)
+        {
+            sumD[fc[i]] += mag((pCf[i] - C[fc[i]]) & pn[i]);
+            nD[fc[i]] += 1;
+        }
+    }
+
+    return 2*sumD/max(nD, scalar(1));
+}
+
+
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
 void Foam::combustionModels::PaSR::correct()
 {
     laminar::correct();
+
+    if (deltaMixing_)
+    {
+        const compressibleMomentumTransportModel& turb = this->turbulence();
+
+        tmp<volScalarField> tnuEff(turb.nuEff());
+        const scalarField& nuEff = tnuEff();
+
+        const volTensorField gradU(fvc::grad(turb.U()));
+        const scalarField magD
+        (
+            sqrt(2.0)*mag(dev(symm(gradU.primitiveField())))
+        );
+
+        tmp<volScalarField> ttc(this->chemistryPtr_->tc());
+        const scalarField& tc = ttc();
+
+        const scalarField d(delta());
+
+        forAll(kappa_, i)
+        {
+            const scalar nuSgs = sqr(Cs_*d[i])*magD[i];
+            const scalar tk = Cmix_*sqr(d[i])/(nuEff[i] + nuSgs + vSmall);
+            kappa_[i] = tk > small ? tc[i]/(tc[i] + tk) : 1.0;
+        }
+
+        return;
+    }
 
     tmp<volScalarField> tepsilon(this->turbulence().epsilon());
     const scalarField& epsilon = tepsilon();
@@ -134,6 +242,7 @@ bool Foam::combustionModels::PaSR::read()
     if (laminar::read())
     {
         this->coeffs().lookup("Cmix") >> Cmix_;
+        readCoeffs();
         return true;
     }
     else

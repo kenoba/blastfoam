@@ -31,6 +31,33 @@ Description
     time scales.  Depending on mesh resolution, the Cmix parameter can be used
     to scale the turbulence mixing time scale.
 
+    The reaction rate is scaled by kappa = tc/(tc + tmix), with the chemical
+    time tc and the mixing time tmix chosen by the optional keyword
+    mixingTime:
+
+    - turbulent (default): tmix = Cmix sqrt(nuEff/epsilon) from the RAS/LES
+      model;
+    - delta: tmix = Cmix delta^2/(nuEff + nuSgs), the time to mix across a
+      cell by molecular, modelled and sub-grid diffusion. delta is the cell
+      size (twice the mean distance from the cell centre to its faces,
+      wedge and empty faces excluded, so that it follows AMR) and
+      nuSgs = (Cs delta)^2 sqrt(2 D:D) the Smagorinsky viscosity of the
+      resolved deviatoric strain D = dev(symm(grad(U))) (Cs default 0.17).
+      It needs no turbulence model (with a laminar model nuEff = nu), and
+      gives the lower limit of the afterburning on meshes that do not resolve
+      the reaction zone.
+
+Usage
+    \verbatim
+    combustionModel PaSR;
+    PaSRCoeffs
+    {
+        Cmix        1;
+        mixingTime  delta;  // turbulent (default) or delta
+        Cs          0.17;   // delta only
+    }
+    \endverbatim
+
 SourceFiles
     PaSRBlastCombustionModel.C
 
@@ -61,8 +88,24 @@ class PaSR
         //- Mixing constant
         scalar Cmix_;
 
+        //- Mixing time from the cell size instead of the turbulence model
+        bool deltaMixing_;
+
+        //- Smagorinsky constant of the sub-grid viscosity (delta mixing)
+        scalar Cs_;
+
         //- Mixing parameter
         volScalarField kappa_;
+
+
+    // Private Member Functions
+
+        //- Read the mixing time model and its coefficients
+        void readCoeffs();
+
+        //- Cell size: twice the mean distance from the cell centre to the
+        //  faces, excluding wedge and empty faces
+        tmp<scalarField> delta() const;
 
 
 public:
