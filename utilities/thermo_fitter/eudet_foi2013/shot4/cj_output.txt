@@ -1,0 +1,48 @@
+Explosive: TNT:0.967749 PETN:0.027736 Mineral-Oil:0.004515
+Initial Density: 1625.46 kg/m^3
+Initial Specific Energy (e0): -323909 J/kg (-0.526501 GPa)
+Compound molecular mass (kg/mol): 0.229123
+
+--- CJ State ---
+CJ Pressure (Pa): 1.68652e+10
+CJ Temperature (K): 3632.84
+CJ Volume (m^3/kg): 0.000472892
+CJ Velocity (m/s): 6697.1
+Internal Energy (J/kg): 876216
+Entropy (J/K/kg): 6711.98
+CJ Composition (mass fractions):
+  N2: 0.176416
+  CO: 0.106369
+  H2O: 0.198592
+  CO2: 0.258515
+  C2N2: 0.00257872
+  CH2O2: 0.00103023
+  HCN: 0.0117736
+  C(d): 0.24391
+
+--- Freeze-out Point ---
+Temperature (K): 1773.72
+Pressure (Pa): 8.07219e+08
+Density (kg/m^3): 672.531
+Composition (mass fractions):
+  H2: 0.0029936
+  N2: 0.182834
+  CO: 0.273799
+  H2O: 0.127688
+  CO2: 0.21438
+  CH4: 0.0212241
+  C(gr): 0.174976
+
+--- JWL Parameters ---
+A (GPa): 1047.45
+B (GPa): 12.2929
+C (GPa): 1.30139
+R1: 5.96202
+R2: 1.36301
+omega: 0.320712
+Cv (J/kg/K): 533.217
+E0 (J/kg): -4.56749e+06
+E0 (GPa): -7.42427
+GurneyEnergy (J/kg): 4.56749e+06
+GurneyVelocity (m/s): 3022.41
+RMS Error: 0.058728

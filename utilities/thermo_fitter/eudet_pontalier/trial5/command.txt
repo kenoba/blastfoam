@@ -1,0 +1,1 @@
+/opt/OpenFOAM/blastfoam/external/eudetcode/build/src/CJDetonation "NM:0.708891 PMMA:0.029661 RDX:0.069222 DOA:0.004032 PIB:0.001597 Mineral-Oil:0.001217 Al:0.185379" 1267.68 --inert Al(s):0.9 BKW --jwl-products-only -o /opt/OpenFOAM/blastfoam/utilities/thermo_fitter/eudet_pontalier/trial5

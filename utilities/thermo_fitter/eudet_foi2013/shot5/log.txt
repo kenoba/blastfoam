@@ -1,0 +1,53 @@
+Computing CJ state for mixture "TNT:0.777807 PETN:0.023858 Mineral-Oil:0.003884 Al:0.194452" at rho0=1761.51 kg/m^3 using BKW EOS (RAND solver) and gas DB Data/Gas24CHNO.json
+Warning: Specified density (1761.51 kg/m^3) is within 1% of Theoretical Maximum Density (1772.09 kg/m^3). Murnaghan EOS extrapolation near/above TMD can lead to numerical artifacts/instability.
+Composition:
+  Elemental Abundances (mol/kg):
+    H           : 18.3035
+    C           : 24.6236
+    N           : 10.5753
+    O           : 21.4525
+    Al          : 7.20685
+  Specific Internal Energy (e0): -263423 J/kg (-0.464022 GPa)
+CJ State Found:
+  Pressure: 16.3489 GPa
+  Temperature: 3582.24 K
+  Density: 2250.76 kg/m^3
+  Velocity (D): 6534.32 m/s
+CJ Composition (mass fractions):
+  N2: 0.142409
+  CO: 0.0811963
+  H2O: 0.160344
+  CO2: 0.187849
+  C2N2: 0.00174732
+  HCN: 0.00914822
+  C(d): 0.20411
+  Al(s): 0.175007
+  Al2O3(s): 0.036741
+Computing Isentrope...
+Isentrope Computed.
+
+Freeze-out Point reached at T = 1798.09 K:
+  Pressure: 0.713657 GPa
+  Density: 738.092 kg/m^3
+  Composition (mass fractions):
+    H2: 0.00285387
+    N2: 0.14715
+    CO: 0.229448
+    H2O: 0.0948162
+    CO2: 0.152006
+    CH4: 0.0189978
+    C(gr): 0.141176
+    Al(s): 0.175007
+    Al2O3(s): 0.036741
+Fitting JWL Parameters...
+JWL Parameters:
+  A: 206.952 GPa
+  B: 3.07935 GPa
+  C: 1.22794 GPa
+  R1: 3.62618
+  R2: 0.886656
+  omega: 0.269116
+  Cv: 1889.24 J/kg/K
+  E0: -5.07725 MJ/kg (-8.33019 GPa)
+  Gurney Velocity: 3186.61 m/s
+  RMS Error: 0.0382319

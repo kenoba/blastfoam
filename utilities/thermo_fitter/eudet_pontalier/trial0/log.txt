@@ -1,0 +1,51 @@
+Computing CJ state for mixture "NM:0.881064 PMMA:0.036865 RDX:0.074685 DOA:0.004350 PIB:0.001724 Mineral-Oil:0.001313" at rho0=1127.08 kg/m^3 using BKW EOS (RAND solver) and gas DB Data/Gas24CHNO.json
+Composition:
+  Elemental Abundances (mol/kg):
+    H           : 49.1997
+    C           : 17.7581
+    N           : 16.4516
+    O           : 31.6691
+  Specific Internal Energy (e0): -1.79026e+06 J/kg (-2.01776 GPa)
+CJ State Found:
+  Pressure: 10.5784 GPa
+  Temperature: 3401.87 K
+  Density: 1556.31 kg/m^3
+  Velocity (D): 5833.56 m/s
+CJ Composition (mass fractions):
+  N2: 0.212845
+  CO: 0.161186
+  H2O: 0.389514
+  CO2: 0.0930119
+  CH4: 0.0140826
+  C2N2: 0.0012658
+  C2H4: 0.00469679
+  C2H2: 0.00127036
+  CH2O2: 0.00124812
+  HCN: 0.0319555
+  C(d): 0.0877982
+Computing Isentrope...
+Isentrope Computed.
+
+Freeze-out Point reached at T = 1795.98 K:
+  Pressure: 0.802456 GPa
+  Density: 528.834 kg/m^3
+  Composition (mass fractions):
+    H2: 0.0065798
+    N2: 0.22796
+    CO: 0.273124
+    H2O: 0.244083
+    CO2: 0.18379
+    NH3: 0.00245306
+    CH4: 0.0601712
+Fitting JWL Parameters...
+JWL Parameters:
+  A: 241.815 GPa
+  B: 5.88802 GPa
+  C: 1.23739 GPa
+  R1: 5.03884
+  R2: 1.26433
+  omega: 0.379349
+  Cv: 742.79 J/kg/K
+  E0: -4.73819 MJ/kg (-5.34032 GPa)
+  Gurney Velocity: 3078.37 m/s
+  RMS Error: 0.0373976

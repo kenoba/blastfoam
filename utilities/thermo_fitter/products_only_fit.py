@@ -152,8 +152,12 @@ def compute(eudet_dir, gas_case, ptrans=1.0e7, T0=288.0, cv_reactants=1030.0,
             inert=("Al(s)", "Al")):
     """Fit entries and transfer state; returns a dict (see report())."""
     cj, comp, jwl = parse_eudet(eudet_dir)
-    rho0 = cj["Reference Density (rho0_eq, kg/m^3)"]
-    rho_CJ = cj["CJ State Density (rho_cj_eq, kg/m^3)"]
+    # Without --inert, EuDetCode writes no active-phase block: the active
+    # phase is the whole charge
+    rho0 = cj.get("Reference Density (rho0_eq, kg/m^3)",
+                  cj.get("Initial Density"))
+    rho_CJ = cj.get("CJ State Density (rho_cj_eq, kg/m^3)",
+                    1/cj["CJ Volume (m^3/kg)"])
     T_CJ = cj["CJ Temperature (K)"]
     p_CJ = cj["CJ Pressure (Pa)"]
     D = cj["CJ Velocity (m/s)"]
@@ -191,13 +195,15 @@ def compute(eudet_dir, gas_case, ptrans=1.0e7, T0=288.0, cv_reactants=1030.0,
     V_CJ = rho0/rho_CJ
     omegaT = math.log(T_CJ/T_t)/math.log(V_t/V_CJ)
     es_CJ = eb(V_CJ) + E0
+    # products Cv of the cases: gas Cv of the transfer composition at 2500 K
+    Cv2500 = e_sensible(gas, Y, 2501.0) - e_sensible(gas, Y, 2500.0)
     hug = 0.5*p_CJ*(1/rho0 - 1/rho_CJ)
     e0 = es_CJ - cv_reactants*T0 - hug
 
     return dict(cj=cj, Y=Y, gas=gas, D=D, p_CJ=p_CJ, T_CJ=T_CJ, rho0=rho0,
                 rho_CJ=rho_CJ, A=A, B=B, C=C, R1=R1, R2=R2, w=w, V_t=V_t,
                 v_t=v_t, T_t=T_t, R_mix=R_mix, b_mix=b_mix, W_mix=W_mix,
-                E0=E0, V_CJ=V_CJ, omegaT=omegaT, es_CJ=es_CJ, hug=hug, e0=e0,
+                E0=E0, Cv2500=Cv2500, V_CJ=V_CJ, omegaT=omegaT, es_CJ=es_CJ, hug=hug, e0=e0,
                 ptrans=ptrans)
 
 
@@ -259,8 +265,13 @@ def report(args, r):
     print(f"    omegaT          {omegaT:.6f};")
     print(f"    E0              {E0:.2f};")
     print("}")
-    print(f"// active molar mass {cj['Molar Mass (W_eq, kg/mol)']*1e3:.3f} "
-          f"kg/kmol")
+    if "Molar Mass (W_eq, kg/mol)" in cj:
+        print(f"// active molar mass {cj['Molar Mass (W_eq, kg/mol)']*1e3:.3f} "
+              f"kg/kmol")
+    else:
+        print(f"// no active-phase molar mass (no --inert): transfer gas "
+              f"{W_mix:.3f} kg/kmol")
+    print(f"// Cv of the transfer gas at 2500 K: {r['Cv2500']:.1f} J/kg/K")
     print(f"// e0 = e_s(V_CJ) - Cv_r*T0 - 0.5*p_CJ*(1/rho0 - 1/rho_CJ)")
     print(f"//    = {es_CJ:.6g} - {args.cv_reactants*args.T0:.6g} "
           f"- {hug:.6g} = {e0:.6g} J/kg")
