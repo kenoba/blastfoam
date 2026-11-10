@@ -31,7 +31,7 @@ inline Foam::label Foam::nasa9Thermo<EquationOfState>::range
     const scalar T
 ) const
 {
-    const label n = coeffs_.size();
+    const label n = nRanges_;
     for (label i = 0; i < n - 1; i++)
     {
         if (T < Tswitch_[i + 1])
@@ -49,7 +49,7 @@ inline Foam::scalar Foam::nasa9Thermo<EquationOfState>::Tfit
     const scalar T
 ) const
 {
-    return min(max(T, Tswitch_.first()), Tswitch_.last());
+    return min(max(T, Tswitch_[0]), Tswitch_[nRanges_]);
 }
 
 
@@ -117,12 +117,13 @@ inline Foam::nasa9Thermo<EquationOfState>::nasa9Thermo
 )
 :
     EquationOfState(st),
-    Tswitch_(Tswitch),
-    coeffs_(coeffs)
+    nRanges_(0)
 {
+    setRanges(Tswitch, coeffs);
+
     if (convertCoeffs)
     {
-        forAll(coeffs_, i)
+        for (label i = 0; i < nRanges_; i++)
         {
             for (label j = 0; j < nCoeffs_; j++)
             {
@@ -141,8 +142,25 @@ inline Foam::nasa9Thermo<EquationOfState>::nasa9Thermo
 )
 :
     EquationOfState(name, nt),
+    nRanges_(nt.nRanges_),
     Tswitch_(nt.Tswitch_),
     coeffs_(nt.coeffs_)
+{}
+
+
+template<class EquationOfState>
+inline Foam::nasa9Thermo<EquationOfState>::nasa9Thermo
+(
+    const EquationOfState& st,
+    const label nRanges,
+    const TswitchArray& Tswitch,
+    const coeffsArray& coeffs
+)
+:
+    EquationOfState(st),
+    nRanges_(nRanges),
+    Tswitch_(Tswitch),
+    coeffs_(coeffs)
 {}
 
 
@@ -155,21 +173,21 @@ inline Foam::scalar Foam::nasa9Thermo<EquationOfState>::limit
     const scalar Told
 ) const
 {
-    if (T < Tswitch_.first() || T > Tswitch_.last())
+    if (T < Tswitch_[0] || T > Tswitch_[nRanges_])
     {
         if (nasa9Thermo<EquationOfState>::debug)
         {
             WarningInFunction
                 << "attempt to use nasa9Thermo<EquationOfState>"
                 << " out of temperature range "
-                << Tswitch_.first() << " -> " << Tswitch_.last()
+                << Tswitch_[0] << " -> " << Tswitch_[nRanges_]
                 << ";  T = " << T << endl;
         }
 
         // Above Thigh the properties are extrapolated with constant Cp; the
         // upper bound keeps the energy -> temperature iteration bounded in
         // non-physical states
-        return min(max(T, Tswitch_.first()), 10*Tswitch_.last());
+        return min(max(T, Tswitch_[0]), 10*Tswitch_[nRanges_]);
     }
     else
     {
@@ -181,33 +199,37 @@ inline Foam::scalar Foam::nasa9Thermo<EquationOfState>::limit
 template<class EquationOfState>
 inline Foam::scalar Foam::nasa9Thermo<EquationOfState>::Tlow() const
 {
-    return Tswitch_.first();
+    return Tswitch_[0];
 }
 
 
 template<class EquationOfState>
 inline Foam::scalar Foam::nasa9Thermo<EquationOfState>::Thigh() const
 {
-    return Tswitch_.last();
+    return Tswitch_[nRanges_];
 }
 
 
 template<class EquationOfState>
-inline const Foam::List<Foam::scalar>&
+inline const Foam::UList<Foam::scalar>
 Foam::nasa9Thermo<EquationOfState>::Tswitch() const
 {
-    return Tswitch_;
+    return UList<scalar>(const_cast<scalar*>(Tswitch_.cdata()), nRanges_ + 1);
 }
 
 
 template<class EquationOfState>
-inline const Foam::List
+inline const Foam::UList
 <
     typename Foam::nasa9Thermo<EquationOfState>::coeffArray
->&
+>
 Foam::nasa9Thermo<EquationOfState>::coeffs() const
 {
-    return coeffs_;
+    return UList<coeffArray>
+    (
+        const_cast<coeffArray*>(coeffs_.cdata()),
+        nRanges_
+    );
 }
 
 
@@ -314,7 +336,7 @@ inline Foam::scalar Foam::nasa9Thermo<EquationOfState>::dCpdT
     const scalar T
 ) const
 {
-    if (T < Tswitch_.first() || T > Tswitch_.last())
+    if (T < Tswitch_[0] || T > Tswitch_[nRanges_])
     {
         return 0;
     }
@@ -345,7 +367,7 @@ inline void Foam::nasa9Thermo<EquationOfState>::operator+=
         Y1 /= this->Y();
         const scalar Y2 = nt.Y()/this->Y();
 
-        forAll(coeffs_, i)
+        for (label i = 0; i < nRanges_; i++)
         {
             for (label j = 0; j < nCoeffs_; j++)
             {
@@ -373,6 +395,7 @@ inline Foam::nasa9Thermo<EquationOfState> Foam::operator+
         return nasa9Thermo<EquationOfState>
         (
             eofs,
+            nt1.nRanges_,
             nt1.Tswitch_,
             nt1.coeffs_
         );
@@ -384,10 +407,9 @@ inline Foam::nasa9Thermo<EquationOfState> Foam::operator+
         const scalar Y1 = nt1.Y()/eofs.Y();
         const scalar Y2 = nt2.Y()/eofs.Y();
 
-        List<typename nasa9Thermo<EquationOfState>::coeffArray>
-            coeffs(nt1.coeffs_.size());
+        typename nasa9Thermo<EquationOfState>::coeffsArray coeffs;
 
-        forAll(coeffs, i)
+        for (label i = 0; i < nt1.nRanges_; i++)
         {
             for (label j = 0; j < nasa9Thermo<EquationOfState>::nCoeffs_; j++)
             {
@@ -395,7 +417,13 @@ inline Foam::nasa9Thermo<EquationOfState> Foam::operator+
             }
         }
 
-        return nasa9Thermo<EquationOfState>(eofs, nt1.Tswitch_, coeffs);
+        return nasa9Thermo<EquationOfState>
+        (
+            eofs,
+            nt1.nRanges_,
+            nt1.Tswitch_,
+            coeffs
+        );
     }
 }
 
@@ -410,6 +438,7 @@ inline Foam::nasa9Thermo<EquationOfState> Foam::operator*
     return nasa9Thermo<EquationOfState>
     (
         s*static_cast<const EquationOfState&>(nt),
+        nt.nRanges_,
         nt.Tswitch_,
         nt.coeffs_
     );
@@ -434,10 +463,9 @@ inline Foam::nasa9Thermo<EquationOfState> Foam::operator==
     const scalar Y1 = nt2.Y()/eofs.Y();
     const scalar Y2 = nt1.Y()/eofs.Y();
 
-    List<typename nasa9Thermo<EquationOfState>::coeffArray>
-        coeffs(nt1.coeffs_.size());
+    typename nasa9Thermo<EquationOfState>::coeffsArray coeffs;
 
-    forAll(coeffs, i)
+    for (label i = 0; i < nt1.nRanges_; i++)
     {
         for (label j = 0; j < nasa9Thermo<EquationOfState>::nCoeffs_; j++)
         {
@@ -445,7 +473,13 @@ inline Foam::nasa9Thermo<EquationOfState> Foam::operator==
         }
     }
 
-    return nasa9Thermo<EquationOfState>(eofs, nt2.Tswitch_, coeffs);
+    return nasa9Thermo<EquationOfState>
+    (
+        eofs,
+        nt2.nRanges_,
+        nt2.Tswitch_,
+        coeffs
+    );
 }
 
 

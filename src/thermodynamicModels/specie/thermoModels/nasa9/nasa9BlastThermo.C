@@ -35,10 +35,10 @@ void Foam::nasa9Thermo<EquationOfState>::checkRanges
     const nasa9Thermo& nt2
 )
 {
-    bool same = nt1.Tswitch_.size() == nt2.Tswitch_.size();
+    bool same = nt1.nRanges_ == nt2.nRanges_;
     if (same)
     {
-        forAll(nt1.Tswitch_, i)
+        for (label i = 0; i <= nt1.nRanges_; i++)
         {
             same = same && !notEqual(nt1.Tswitch_[i], nt2.Tswitch_[i]);
         }
@@ -47,12 +47,64 @@ void Foam::nasa9Thermo<EquationOfState>::checkRanges
     if (!same)
     {
         FatalErrorInFunction
-            << "Temperature ranges " << nt1.Tswitch_ << " for "
+            << "Temperature ranges " << nt1.Tswitch() << " for "
             << (nt1.name().size() ? nt1.name() : "others")
-            << " != " << nt2.Tswitch_ << " for "
+            << " != " << nt2.Tswitch() << " for "
             << (nt2.name().size() ? nt2.name() : "others") << nl
             << "    All species of a nasa9 mixture must use the same ranges"
             << exit(FatalError);
+    }
+}
+
+
+template<class EquationOfState>
+void Foam::nasa9Thermo<EquationOfState>::setRanges
+(
+    const UList<scalar>& Tswitch,
+    const UList<coeffArray>& coeffs
+)
+{
+    if (Tswitch.size() != coeffs.size() + 1)
+    {
+        FatalErrorInFunction
+            << "Tswitch has " << Tswitch.size() << " entries for "
+            << coeffs.size() << " coefficient ranges (expected "
+            << coeffs.size() + 1 << ')'
+            << exit(FatalError);
+    }
+
+    if (coeffs.size() < 1 || coeffs.size() > maxRanges_)
+    {
+        FatalErrorInFunction
+            << coeffs.size() << " temperature ranges for "
+            << this->name() << "; nasa9 supports 1 to " << maxRanges_
+            << exit(FatalError);
+    }
+
+    for (label i = 0; i < Tswitch.size() - 1; i++)
+    {
+        if (Tswitch[i] >= Tswitch[i + 1])
+        {
+            FatalErrorInFunction
+                << "Tswitch " << Tswitch << " is not increasing for "
+                << this->name()
+                << exit(FatalError);
+        }
+    }
+
+    nRanges_ = coeffs.size();
+    Tswitch_ = Zero;
+    forAll(Tswitch, i)
+    {
+        Tswitch_[i] = Tswitch[i];
+    }
+    for (label i = 0; i < maxRanges_; i++)
+    {
+        coeffs_[i] = Zero;
+    }
+    forAll(coeffs, i)
+    {
+        coeffs_[i] = coeffs[i];
     }
 }
 
@@ -63,30 +115,17 @@ template<class EquationOfState>
 Foam::nasa9Thermo<EquationOfState>::nasa9Thermo(const dictionary& dict)
 :
     EquationOfState(dict),
-    Tswitch_(dict.subDict("thermodynamics").lookup("Tswitch")),
-    coeffs_(dict.subDict("thermodynamics").lookup("coeffs"))
+    nRanges_(0)
 {
-    if (Tswitch_.size() != coeffs_.size() + 1)
-    {
-        FatalIOErrorInFunction(dict)
-            << "Tswitch has " << Tswitch_.size() << " entries for "
-            << coeffs_.size() << " coefficient ranges (expected "
-            << coeffs_.size() + 1 << ')'
-            << exit(FatalIOError);
-    }
-
-    for (label i = 0; i < Tswitch_.size() - 1; i++)
-    {
-        if (Tswitch_[i] >= Tswitch_[i + 1])
-        {
-            FatalIOErrorInFunction(dict)
-                << "Tswitch " << Tswitch_ << " is not increasing"
-                << exit(FatalIOError);
-        }
-    }
+    const dictionary& thermoDict = dict.subDict("thermodynamics");
+    setRanges
+    (
+        List<scalar>(thermoDict.lookup("Tswitch")),
+        List<coeffArray>(thermoDict.lookup("coeffs"))
+    );
 
     // Convert coefficients to mass-basis
-    forAll(coeffs_, i)
+    for (label i = 0; i < nRanges_; i++)
     {
         for (label j = 0; j < nCoeffs_; j++)
         {

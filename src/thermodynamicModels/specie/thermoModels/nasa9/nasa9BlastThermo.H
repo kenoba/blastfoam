@@ -26,8 +26,8 @@ Class
 
 Description
     NASA 9-coefficient polynomial thermodynamics (McBride, Zehe and Gordon,
-    NASA/TP-2002-211556) with any number of temperature ranges, templated
-    into the equation of state.
+    NASA/TP-2002-211556) with up to four temperature ranges, templated into
+    the equation of state.
 
     In each range
         Cp/R = a0/T^2 + a1/T + a2 + a3 T + a4 T^2 + a5 T^3 + a6 T^4
@@ -40,7 +40,8 @@ Description
     constant Cp (H linear in T, S extended with Cp ln(T/Tlimit)).
 
     Mixtures are formed by mass-weighting the coefficients, so all species
-    of a mixture must use the same temperature ranges.
+    of a mixture must use the same temperature ranges. The ranges are stored
+    in fixed-size arrays, so forming a mixture does not allocate memory.
 
     \verbatim
         thermodynamics
@@ -122,16 +123,26 @@ public:
         static const int nCoeffs_ = 9;
         typedef FixedList<scalar, nCoeffs_> coeffArray;
 
+        //- Maximum number of temperature ranges. The ranges are stored in
+        //  fixed-size arrays so that mixing (Y*thermo, +=) does not allocate:
+        //  the mixture is rebuilt for each cell and property evaluation.
+        static const int maxRanges_ = 4;
+        typedef FixedList<scalar, maxRanges_ + 1> TswitchArray;
+        typedef FixedList<coeffArray, maxRanges_> coeffsArray;
+
 
 private:
 
     // Private Data
 
-        //- Temperature range limits (n + 1 values for n ranges)
-        List<scalar> Tswitch_;
+        //- Number of temperature ranges
+        label nRanges_;
+
+        //- Temperature range limits (nRanges_ + 1 values used)
+        TswitchArray Tswitch_;
 
         //- Coefficients per range, on a mass basis (multiplied by R)
-        List<coeffArray> coeffs_;
+        coeffsArray coeffs_;
 
 
     // Private Member Functions
@@ -154,6 +165,13 @@ private:
         //- Check that two thermos have the same temperature ranges
         static void checkRanges(const nasa9Thermo&, const nasa9Thermo&);
 
+        //- Set the ranges from lists (checks the sizes)
+        void setRanges
+        (
+            const UList<scalar>& Tswitch,
+            const UList<coeffArray>& coeffs
+        );
+
 
 public:
 
@@ -170,6 +188,15 @@ public:
 
         //- Construct from dictionary
         nasa9Thermo(const dictionary& dict);
+
+        //- Construct from components with the fixed-size range data
+        inline nasa9Thermo
+        (
+            const EquationOfState& st,
+            const label nRanges,
+            const TswitchArray& Tswitch,
+            const coeffsArray& coeffs
+        );
 
         //- Construct as a named copy
         inline nasa9Thermo(const word&, const nasa9Thermo&);
@@ -204,11 +231,11 @@ public:
             //- Return const access to the high temperature limit
             inline scalar Thigh() const;
 
-            //- Return const access to the range limits
-            inline const List<scalar>& Tswitch() const;
+            //- Return the range limits (nRanges + 1 values)
+            inline const UList<scalar> Tswitch() const;
 
-            //- Return const access to the coefficients (mass basis)
-            inline const List<coeffArray>& coeffs() const;
+            //- Return the coefficients per range (mass basis)
+            inline const UList<coeffArray> coeffs() const;
 
 
         // Fundamental properties
