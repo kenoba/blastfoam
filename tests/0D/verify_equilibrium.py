@@ -149,7 +149,8 @@ class Species:
         return (h + cp*(T - Tf))/T - (s + cp*np.log(T/Tf))
 
     def e(self, T):          # absolute internal energy [J/kg], blastFoam model
-        return RU/self.W*(self.h(T) - T)
+        # condensed species (condensed yes in the species file): e = h
+        return RU/self.W*(self.h(T) - (0 if self.condensed else T))
 
 
 # --- References ----------------------------------------------------------

@@ -30,6 +30,26 @@ Class
 Description
     Abel-Nobel equation of state for ballistics
 
+        p = rho R_g T/(1 - b rho)
+
+    A specie can be declared condensed (e.g. graphite or alumina carried as
+    species of the gas phase):
+
+        equationOfState
+        {
+            b           4.545e-4;   // specific volume of the condensed phase
+            condensed   yes;        // default no
+        }
+
+    A condensed specie has no gas constant (R_g = 0): it does not contribute
+    to the pressure, Cp - Cv = 0 (Cv = Cp of the thermo data) and its energy
+    is E = H; b is its own specific volume. R_g and b of a mixture are
+    mass-fraction averages, so the pressure is that of the gaseous species in
+    the volume left by all covolumes. The molecular weight (for the
+    conversion of molar thermo data) is not changed. A pure condensed specie
+    (evaluated alone, e.g. by the chemistry Jacobian) is incompressible at
+    rho = 1/b with no pressure and no departure terms.
+
     References:
     \verbatim
         Johnston, I.A., (2005).
@@ -80,11 +100,15 @@ template <class Specie> class AbelNobel : public Specie {
   //- Co-volume [m^3/kg]
   scalar b_;
 
+  //- Gas constant of the gaseous part [J/kg/K]: R for a gas, 0 for a
+  //  condensed specie; mass-fraction averaged in a mixture
+  scalar Rg_;
+
 public:
   // Constructors
 
   //- Construct from components
-  inline AbelNobel(const Specie &sp, const scalar b);
+  inline AbelNobel(const Specie &sp, const scalar b, const scalar Rg);
 
   //- Construct from dictionary
   AbelNobel(const dictionary &dict);
@@ -99,6 +123,12 @@ public:
   inline static autoPtr<AbelNobel> New(const dictionary &dict);
 
   // Member Functions
+
+  //- Co-volume [m^3/kg]
+  inline scalar b() const { return b_; }
+
+  //- Gas constant of the gaseous part [J/kg/K]
+  inline scalar Rg() const { return Rg_; }
 
   //- Return the instantiated type name
   static word typeName() {

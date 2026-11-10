@@ -23,11 +23,17 @@ molWeight, the Abel-Nobel covolume b (Tc, Pc) and the Sutherland transport
 coefficients are taken from an existing species file (--base); for species
 not in it they are copied from a parent species (per mass), see PARENT.
 
+Condensed species (phase suffix in the name, e.g. C(gr), Al2O3(s)) get
+'condensed yes' in their equationOfState: no gas constant (no contribution to
+the pressure, Cv = Cp) and b is their specific volume (CONDENSED_B, replacing
+the base value). --condensed-as-gas writes them as gases (files before
+2026-11-08).
+
 Usage:
     nasa9_species.py --base thermo.compressibleGas --species O2 N2 O N NO ...
         [--eudet external/eudetcode/Data/GasFlame.json]
         [--cantera-gas nasa_gas.yaml] [--cantera-condensed nasa_condensed.yaml]
-        [-o thermo.nasa9Gas] [--check]
+        [-o thermo.nasa9Gas] [--check] [--condensed-as-gas]
 """
 
 import argparse
@@ -49,6 +55,16 @@ CANTERA_NAME = {"Al": "AL", "AlO": "ALO", "C(gr)": "C(gr)", "Al2O3(s)": "AL2O3(a
                 "Al2O3(L)": "AL2O3(L)", "Al2O": "AL2O", "AlO2": "ALO2",
                 "Al2O2": "AL2O2", "AlOH": "ALOH", "HAlO": "HALO", "AlO2H": "ALO2H",
                 "AlH": "ALH"}
+
+# Specific volume 1/rho [m^3/kg] of the condensed species at room temperature
+# (graphite 2200 kg/m^3; alpha-alumina 3950; liquid alumina 3000 near the melting
+# point)
+CONDENSED_B = {"C(gr)": 1/2200, "Al2O3(s)": 1/3950, "Al2O3(L)": 1/3000}
+
+
+def condensed(name):
+    return "(" in name
+
 
 # Species without an entry in the base file take b, Tc, Pc and transport
 # from a parent (b is per mass, so atoms take the value of their molecule)
@@ -238,12 +254,18 @@ def molweight(name):
 
 # --- Output ----------------------------------------------------------------
 
-def entry(name, coeffs, base, origin, err):
+def entry(name, coeffs, base, origin, err, as_gas=False):
     blk = base.get(name) or base.get(PARENT.get(name, ""), "")
     if not blk:
         sys.exit(f"No base entry for {name} or its parent {PARENT.get(name)}")
     W = molweight(name)
-    eos = "\n".join("        " + l.strip() for l in sub(blk, "equationOfState").strip().splitlines())
+    eos_lines = [l.strip() for l in sub(blk, "equationOfState").strip().splitlines()]
+    if condensed(name) and not as_gas:
+        if name not in CONDENSED_B:
+            sys.exit(f"No specific volume for the condensed species {name} (CONDENSED_B)")
+        eos_lines = [f"b               {CONDENSED_B[name]:.4e};  // specific volume",
+                     "condensed       yes;"]
+    eos = "\n".join("        " + l for l in eos_lines)
     tr = "\n".join("        " + l.strip() for l in sub(blk, "transport").strip().splitlines())
     rows = "\n".join("            (" + " ".join(f"{c:.10g}" for c in a) + ")" for a in coeffs)
     note = f"// {origin}" + (f"; fitted, max Cp error {100*err:.2f}%" if err > 0 else "")
@@ -289,6 +311,8 @@ def main():
     ap.add_argument("--cantera-condensed", default="/usr/local/share/cantera/data/nasa_condensed.yaml")
     ap.add_argument("-o", "--output")
     ap.add_argument("--check", action="store_true", help="compare Cp, H, S with the source")
+    ap.add_argument("--condensed-as-gas", action="store_true",
+                    help="write condensed species as gases (no 'condensed yes', base b)")
     args = ap.parse_args()
 
     eudet = load_eudet(args.eudet)
@@ -299,7 +323,7 @@ def main():
     for name in args.species:
         src, origin = source(name, eudet, cantera)
         coeffs, err = on_common_ranges(src)
-        out.append(entry(name, coeffs, base, origin, err))
+        out.append(entry(name, coeffs, base, origin, err, args.condensed_as_gas))
         if args.check:
             fit = Piecewise([(lo, hi, a) for lo, hi, a in zip(T_RANGES[:-1], T_RANGES[1:], coeffs)])
             e = [max(abs(fit.cp(T) - src.cp(T))/abs(src.cp(T)),

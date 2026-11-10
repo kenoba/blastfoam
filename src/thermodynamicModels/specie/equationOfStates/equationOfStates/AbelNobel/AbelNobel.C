@@ -27,6 +27,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "AbelNobel.H"
+#include "Switch.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -37,7 +38,17 @@ Foam::AbelNobel<Specie>::AbelNobel
 )
 :
     Specie(dict),
-    b_(dict.subDict("equationOfState").lookup<scalar>("b"))
+    b_(dict.subDict("equationOfState").lookup<scalar>("b")),
+    Rg_
+    (
+        dict.subDict("equationOfState").lookupOrDefault<Switch>
+        (
+            "condensed",
+            false
+        )
+      ? 0
+      : this->R()
+    )
 {}
 
 
@@ -50,6 +61,10 @@ void Foam::AbelNobel<Specie>::write(Ostream& os) const
     Specie::write(os);
     dictionary dict("equationOfState");
     dict.add("b", b_);
+    if (Rg_ == 0)
+    {
+        dict.add("condensed", true);
+    }
     os  << indent << dict.dictName() << dict;
 }
 

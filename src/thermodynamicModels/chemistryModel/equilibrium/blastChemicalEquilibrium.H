@@ -31,9 +31,12 @@ Description
 
     Gas species are ideal in the chemical potentials,
         mu_k/(R_u T) = g_k + ln(c_k R_u T/p_std),   g_k = W_k G_std,k/(R_u T),
-    with c_k the molar concentration. Condensed species (name with a phase
-    suffix in parentheses, e.g. C(gr), Al2O3(s)) are pure phases,
-    mu_c/(R_u T) = g_c. At fixed T and V the gas amounts follow from the
+    with c_k the molar concentration. Condensed species are pure phases,
+    mu_c/(R_u T) = g_c: species with a phase suffix in parentheses in the
+    name (e.g. C(gr), Al2O3(s)) and species without a gas constant in their
+    equation of state (condensed yes in the Abel-Nobel equationOfState; a
+    warning is given for a suffixed species the equation of state treats as
+    a gas). At fixed T and V the gas amounts follow from the
     element potentials lambda,
         n_k = V p_std/(R_u T) exp(-g_k + sum_i a_ik lambda_i),
     and lambda maximises the concave dual

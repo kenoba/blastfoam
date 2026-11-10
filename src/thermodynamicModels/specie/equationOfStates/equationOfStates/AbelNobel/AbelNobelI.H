@@ -32,11 +32,13 @@ template<class Specie>
 inline Foam::AbelNobel<Specie>::AbelNobel
 (
     const Specie& sp,
-    const scalar b
+    const scalar b,
+    const scalar Rg
 )
 :
     Specie(sp),
-    b_(b)
+    b_(b),
+    Rg_(Rg)
 {}
 
 
@@ -50,7 +52,8 @@ inline Foam::AbelNobel<Specie>::AbelNobel
 )
 :
     Specie(name, pf),
-    b_(pf.b_)
+    b_(pf.b_),
+    Rg_(pf.Rg_)
 {}
 
 
@@ -101,7 +104,13 @@ Foam::scalar Foam::AbelNobel<Specie>::pRhoT
     const scalar T
 ) const
 {
-    return rho*this->R()*T/(1.0 - b_*rho);
+    // A pure condensed specie (Rg = 0) is incompressible at rho = 1/b: no
+    // gas pressure (avoids 0/0 at its own density)
+    if (Rg_ <= 0)
+    {
+        return 0;
+    }
+    return rho*Rg_*T/(1.0 - b_*rho);
 }
 
 
@@ -112,7 +121,11 @@ Foam::scalar Foam::AbelNobel<Specie>::rho
     const scalar T
 ) const
 {
-    return p/(this->R()*T + p*b_);
+    if (Rg_ <= 0)
+    {
+        return 1.0/b_;
+    }
+    return p/(Rg_*T + p*b_);
 }
 
 
@@ -124,7 +137,11 @@ Foam::scalar Foam::AbelNobel<Specie>::dpdv
     const scalar T
 ) const
 {
-    return -this->R()*T*sqr(rho/(b_*rho - 1.0));
+    if (Rg_ <= 0)
+    {
+        return 0;
+    }
+    return -Rg_*T*sqr(rho/(b_*rho - 1.0));
 }
 
 
@@ -149,7 +166,11 @@ Foam::scalar Foam::AbelNobel<Specie>::dpdT
     const scalar T
 ) const
 {
-    return rho*this->R()/(1.0 - b_*rho);
+    if (Rg_ <= 0)
+    {
+        return 0;
+    }
+    return rho*Rg_/(1.0 - b_*rho);
 }
 
 
@@ -226,7 +247,11 @@ Foam::scalar Foam::AbelNobel<Specie>::H
     const scalar T
 ) const
 {
-    return this->R()*T*b_*rho/(1.0 - b_*rho);
+    if (Rg_ <= 0)
+    {
+        return 0;
+    }
+    return Rg_*T*b_*rho/(1.0 - b_*rho);
 }
 
 
@@ -239,7 +264,7 @@ Foam::scalar Foam::AbelNobel<Specie>::CpMCv
     const scalar CpCv
 ) const
 {
-    return this->R();
+    return Rg_;
 }
 
 
@@ -250,7 +275,7 @@ Foam::scalar Foam::AbelNobel<Specie>::Sp
     const scalar T
 ) const
 {
-    return -this->R()*log(p/Pstd);
+    return -Rg_*log(p/Pstd);
 }
 
 
@@ -261,8 +286,12 @@ Foam::scalar Foam::AbelNobel<Specie>::Sv
     const scalar T
 ) const
 {
+    if (Rg_ <= 0)
+    {
+        return 0;
+    }
     return
-        this->R()
+        Rg_
        *(
             log(T*Pstd/(Tstd*p))
           + log
@@ -291,6 +320,7 @@ inline void Foam::AbelNobel<Specie>::operator+=
         const scalar Y2 = an.Y()/this->Y();
 
         b_ = Y1*b_ + Y2*an.b_;
+        Rg_ = Y1*Rg_ + Y2*an.Rg_;
     }
 }
 
@@ -322,7 +352,8 @@ inline Foam::AbelNobel<Specie> Foam::operator+
         return AbelNobel<Specie>
         (
             sp,
-            an1.b_
+            an1.b_,
+            an1.Rg_
         );
     }
     else
@@ -333,7 +364,8 @@ inline Foam::AbelNobel<Specie> Foam::operator+
         return AbelNobel<Specie>
         (
             sp,
-            Y1*an1.b_ + Y2*an2.b_
+            Y1*an1.b_ + Y2*an2.b_,
+            Y1*an1.Rg_ + Y2*an2.Rg_
         );
     }
 }
@@ -349,7 +381,8 @@ inline Foam::AbelNobel<Specie> Foam::operator*
     return AbelNobel<Specie>
     (
         s*static_cast<const Specie&>(an),
-        an.b_
+        an.b_,
+        an.Rg_
     );
 }
 
@@ -373,7 +406,8 @@ inline Foam::AbelNobel<Specie> Foam::operator==
     return AbelNobel<Specie>
     (
         sp,
-        Y2*an2.b_ - Y1*an1.b_
+        Y2*an2.b_ - Y1*an1.b_,
+        Y2*an2.Rg_ - Y1*an1.Rg_
     );
 }
 

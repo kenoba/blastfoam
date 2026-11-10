@@ -158,9 +158,17 @@ def p_trans_from(model, default):
     return default
 
 
+def condensed(data):
+    """Species declared condensed (condensed yes in its equationOfState): no
+    gas constant in the Abel-Nobel gas."""
+    v = data.get("equationOfState", {}).get("condensed", ["no"])
+    return str(v[0]).strip(";") in ("yes", "on", "true", "1")
+
+
 def gas_mixture(gas, fractions):
     """Return (R_mix, b_mix, eos) for the gas phase at the given mass
-    fractions (b mass-fraction weighted, as in AbelNobel)."""
+    fractions (R and b mass-fraction weighted, as in AbelNobel; condensed
+    species without gas constant)."""
     eos = gas["thermoType"]["equationOfState"][0]
     if not fractions:
         # Single-specie gas defined inline
@@ -172,7 +180,8 @@ def gas_mixture(gas, fractions):
     for sp, y in fractions.items():
         y = scalar(y)/Ysum
         data = gas[sp]
-        R_mix += y*R_UNIVERSAL/scalar(data["specie"]["molWeight"])
+        if not condensed(data):
+            R_mix += y*R_UNIVERSAL/scalar(data["specie"]["molWeight"])
         b_mix += y*scalar(data.get("equationOfState", {}).get("b", [0.0]))
     return R_mix, b_mix, eos
 

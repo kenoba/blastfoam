@@ -15,7 +15,8 @@ at the gas-EOS temperature of the same state:
     omegaT = ln(T_CJ/T_t)/ln(V_t/V_CJ)         (T_s through T_CJ and T_t)
 
 e_gas is the blastFoam sensible energy, sum_k Y_k (Hs_k(T) - R_k T), with
-Hs_k relative to 298.15 K. The transfer composition is the EuDetCode
+Hs_k relative to 298.15 K; R_k = 0 for condensed species (condensed yes in
+the species equationOfState, e.g. C(gr)), which also do not enter R_mix. The transfer composition is the EuDetCode
 freeze-out composition without the inert species, normalised.
 
 The detonation energy of the programmed burn lifts the reactants
@@ -81,9 +82,10 @@ def parse_eudet(directory):
 
 
 def species_data(gas, sp, T):
-    """(Ha(T) function [J/kg], R, b, W) of a gas species; JANAF (Tcommon,
+    """(Ha(T) function [J/kg], R_g, b, W) of a gas species; JANAF (Tcommon,
     low/highCpCoeffs) or nasa9 (Tswitch, coeffs) thermodynamics, both with
-    constant Cp outside the fit range, as in blastFoam."""
+    constant Cp outside the fit range, as in blastFoam. R_g is the gas
+    constant in the Abel-Nobel EOS, 0 for a condensed species."""
     d = gas[sp]
     W = co.scalar(d["specie"]["molWeight"])
     Rs = R_UNIVERSAL/W
@@ -123,7 +125,7 @@ def species_data(gas, sp, T):
                  if x not in "()"]
             return Rs*(((((a[4]/5*Tv + a[3]/4)*Tv + a[2]/3)*Tv + a[1]/2)*Tv + a[0])*Tv
                        + a[5])
-    return ha, Rs, b, W
+    return ha, (0.0 if co.condensed(d) else Rs), b, W
 
 
 def e_sensible(gas, Y, T):

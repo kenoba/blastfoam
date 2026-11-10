@@ -734,7 +734,22 @@ Foam::blastChemicalEquilibrium<ThermoType>::blastChemicalEquilibrium
         {
             comp[k] = parseFormula(name);
         }
-        condensed_[k] = name.find('(') != string::npos;
+        // Condensed: phase suffix in the name, or no gas constant in the
+        // equation of state (Cp - Cv = 0, e.g. condensed yes in Abel-Nobel)
+        const bool suffix = name.find('(') != string::npos;
+        const ThermoType& t = thermos[k];
+        const scalar cp = t.Cp(1, 0, 1000);
+        const bool eosCondensed =
+            mag(t.CpMCv(1, 0, 1000, cp)) < 1e-6*t.R();
+        if (suffix && !eosCondensed)
+        {
+            WarningInFunction
+                << "Specie " << name << " is condensed in the equilibrium"
+                << " but a gas in its equation of state (it contributes to"
+                << " the pressure); set condensed yes in its equationOfState"
+                << endl;
+        }
+        condensed_[k] = suffix || eosCondensed;
 
         forAll(comp[k], j)
         {

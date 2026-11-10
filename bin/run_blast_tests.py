@@ -283,6 +283,14 @@ def main():
             msg = "nasa9Thermo (compiled) vs NASA-9 data for 18 species and air, 200 - 25 000 K" if passed else f"Failed: {((stderr or stdout).strip().splitlines() or [''])[-1][:200]}"
             results.append(TestResult("NASA-9 Gas Thermodynamics (Phase C2)", 1, dur, passed, msg))
 
+            # Condensed species in the Abel-Nobel gas (C(gr) in detonation products)
+            code, stdout, stderr, dur = run_command(
+                f"{sys.executable} tests/0D/verify_condensed_species.py"
+            )
+            passed = (code == 0)
+            msg = "condensed yes (Abel-Nobel): C(gr) without gas constant, Cv = Cp; mixture Rg, b, p, Es to round-off; 0D isentropic expansion of TNT products (compiled thermo, TRhoE) on the independent isentrope within 1e-7" if passed else f"Failed: {((stderr or stdout).strip().splitlines() or [''])[-1][:200]}"
+            results.append(TestResult("Condensed Species in the Abel-Nobel Gas", 1, dur, passed, msg))
+
             # Chemical equilibrium at fixed density and energy (Phase C3)
             code, stdout, stderr, dur = run_command(
                 f"{sys.executable} tests/0D/verify_equilibrium.py", timeout=900
