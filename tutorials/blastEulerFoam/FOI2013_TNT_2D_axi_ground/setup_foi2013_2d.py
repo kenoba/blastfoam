@@ -6,7 +6,7 @@ mapped at t0, before the shock reaches the ground.
 
     python3 setup_foi2013_2d.py --oneD <1D case> --out <case dir>
         [--t0 auto] [--W 7.04] [--H 5.12] [--h 0.032] [--minLevel 2]
-        [--mixingLevel 3] [--endTime 18e-3] [--np 6]
+        [--mixingLevel 3] [--pressureDelta 2000] [--endTime 18e-3] [--np 6]
     cd <case dir> && ./Allrun
 
 - Mesh: 5-degree wedge about the vertical axis y, x in [0, W], y in [0, H],
@@ -17,7 +17,12 @@ mapped at t0, before the shock reaches the ground.
   the HOB; checked against the 1D probe at r = HOB.
 - Physics: constant/ of the 1D case (the shot's products fit, closure,
   transfer and gas chemistry); numerics, AMR and the initial-field set of
-  ../ChargeCompBAl_2D_axi_2m (G2b): refinement at 20% jumps of rho and p.
+  ../ChargeCompBAl_2D_axi_2m (G2b): refinement at 20% jumps of rho, and at
+  absolute pressure jumps above --pressureDelta (2 kPa per face, coarsened
+  below half of it; 0 keeps the 20% jumps of p of G2). The relative criterion
+  does not flag the weak shock beyond about 2.5 m (a 20-30 kPa shock smeared
+  over 2-3 cells), which then runs on the base cells (32 mm) and loses 20% of
+  its peak (shot 4, 2026-11-11).
   The finest level follows the 1D cell size at the shock radius, as in G2:
   a time table from the 1D probe arrival times (the 1D run must have passed
   its outer probes), never below minLevel (2: 8 mm with 32 mm base cells). The products/air mixing layer is held at
@@ -323,9 +328,18 @@ functions
 """ + FOOTER
 
 
-def dynamic_mesh(levels, mixingLevel, ratio):
+def dynamic_mesh(levels, mixingLevel, ratio, pressureDelta):
     src = open(os.path.join(G2, "constant", "dynamicMeshDict")).read()
     body = src[src.index("maxLevel"):]
+    if pressureDelta > 0:
+        new = ("pressure\n        {\n"
+               "            errorEstimator      delta;\n"
+               "            field               p;\n"
+               f"            lowerRefineLevel    {pressureDelta:g};\n"
+               f"            unrefineLevel       {pressureDelta/2:g};\n"
+               "            maxRefinement       $maxLevel;\n        }")
+        body, n = re.subn(r"pressure\s*\{[^}]*\}", new, body, count=1)
+        assert n == 1, "pressure estimator not found in the G2 dynamicMeshDict"
     tab = "\n".join(f"    ({t:<12.6g} {L + 0.5:g})" for t, L in levels)
     body = re.sub(r"maxLevel\s+table\s*\([^;]*?\);",
                   f"maxLevel        table\n(\n{tab}\n);", body, count=1, flags=re.S)
@@ -341,6 +355,8 @@ def dynamic_mesh(levels, mixingLevel, ratio):
             + "// (G2b). Finest level (floored) against time: about the 1D cell size at the\n"
             + "// shock radius (from the 1D arrival times), at least minLevel;\n"
             + f"// mixing layer at level {mixingLevel}; products C/(C+N) element ratio\n"
+            + (f"// Pressure: absolute jumps above {pressureDelta:g} Pa per face (weak shocks).\n"
+               if pressureDelta > 0 else "")
             + f"// {ratio:.4f} (1D transfer composition).\n\n")
     return head + body
 
@@ -411,6 +427,8 @@ def main():
     ap.add_argument("--minLevel", type=int, default=2)
     ap.add_argument("--mixingLevel", type=int, default=3)
     ap.add_argument("--endTime", type=float, default=18e-3)
+    ap.add_argument("--pressureDelta", type=float, default=2000.0,
+                    help="refine at absolute pressure jumps above this [Pa]; 0: 20%% jumps")
     ap.add_argument("--np", type=int, default=6)
     a = ap.parse_args()
 
@@ -449,7 +467,7 @@ def main():
 
     ratio = products_ratio(os.path.join(oneD, "constant", "fvModels"))
     open(os.path.join(out, "constant", "dynamicMeshDict"), "w").write(
-        dynamic_mesh(levels, a.mixingLevel, ratio))
+        dynamic_mesh(levels, a.mixingLevel, ratio, a.pressureDelta))
     open(os.path.join(out, "system", "blockMeshDict"), "w").write(block_mesh(a.W, a.H, a.h))
 
     ground = [(x, 1e-3, f"ground x {x:g}" + (f" P{int(x/2)}" if x in (2, 4, 6) else ""))
@@ -474,7 +492,8 @@ def main():
     os.symlink(oneD, os.path.join(out, "oneD"))
     with open(os.path.join(out, "charge.txt"), "w") as f:
         f.write(" ".join(info) + f" t0 {t0} W {a.W:g} H {a.H:g} h {a.h:g} minLevel {a.minLevel}"
-                f" mixingLevel {a.mixingLevel}\n")
+                f" mixingLevel {a.mixingLevel}"
+                f" pressureDelta {a.pressureDelta:g}\n")
     print(f"{out}: HOB {hob:g} m, products C/(C+N) {ratio:.4f}, "
           f"{round(a.W/a.h)} x {round(a.H/a.h)} base cells, t0 {t0} (1D shock past r = {r0:g} m), "
           f"levels {[(round(t, 6), L) for t, L in levels]}")

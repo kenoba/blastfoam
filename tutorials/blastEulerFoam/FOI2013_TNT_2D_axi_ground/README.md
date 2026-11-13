@@ -47,8 +47,11 @@ child processes.
   are transmissive. Charge centre on the axis at the HOB (`charge.txt` of
   the 1D case).
 - Physics: `constant/` of the 1D case. Numerics, initial-field set and AMR of
-  `../ChargeCompBAl_2D_axi_2m` (G2b): shock and contact (20% jumps of rho
-  and p) refined to about the 1D cell size at the shock radius (a time
+  `../ChargeCompBAl_2D_axi_2m` (G2b): shock and contact (20% jumps of rho,
+  and absolute jumps of p above `--pressureDelta`, 2 kPa per face, coarsened
+  below 1 kPa; the 20% jumps of p alone lose the weak shock beyond about
+  2.5 m, which then runs on the 32 mm base cells) refined to about the 1D
+  cell size at the shock radius (a time
   table from the 1D arrival times), never below `--minLevel` (2: 8 mm);
   the products/air mixing layer at `--mixingLevel` (3:
   4 mm), marked by the gas carbon/(carbon + nitrogen) element ratio (0.667
@@ -62,3 +65,11 @@ child processes.
 
 Test (2026-11-03, shot 4 laminar mapped at 0.9 ms on 2 processes): 35 200
 base cells refined to about 75 000 at the mapping; the solver starts cleanly.
+
+Shot 4 laminar (2026-11-13, mapped at 1.5 ms, 18 ms on 6 processes, about
+45 h; 100 000 cells early, 48 000 at the end): with `--pressureDelta 2000`
+the free-field peaks at 2.5 and 3 m are within 3% of the 1D run on 8 mm
+cells (20% jumps only: 6-15% low). Ground gauges P1/P2/P3 (2/4/6 m): peak
+200.5/74.8/39.5 kPa (measured 440.9 (doubtful)/99.9/45.1; 20% jumps only
+164.4/64.6/34.8), positive impulse 122.4/72.2/48.5 Pa s (96.9/77.8/57.3),
+arrival 3.664/7.528/12.254 ms (3.364/7.287/12.054).
