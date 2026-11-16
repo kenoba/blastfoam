@@ -117,5 +117,6 @@ ${saturationTemperature}/function/functionSaturationTemperatureModel.C
 ${saturationTemperature}/polynomial/polynomialSaturationTemperatureModel.C
 
 fvModels/pressurePhaseChange/pressurePhaseChange.C
+fvModels/turbulentMixingDiffusion/turbulentMixingDiffusion.C
 
 LIB = $(BLAST_LIBBIN)/libblastThermodynamics

@@ -107,6 +107,15 @@ Location: `src/thermodynamicModels/fvModels/pressurePhaseChange/`, built into `l
   - blastFoam (single mixture energy and velocity): `rhoE` source $\dot m\,e_\text{off}$ only.
 - Note: the code was introduced in `4cb49946` as a new model. No `temperaturePhaseChange` model was ever committed to this repository's history.
 
+### 2.2 Subgrid Products/Air Mixing (`turbulentMixingDiffusion`, 2026-11-16)
+Location: `src/thermodynamicModels/fvModels/turbulentMixingDiffusion/`, built into `libblastThermodynamics`.
+
+- Adds a gradient-diffusion term $\nabla\cdot(\alpha\rho D\,\nabla\phi)$ to the species equations and (optionally, `energy yes`) the sensible energy equation of one fluid phase (`phase`), so that resolved but unmixed products and air can mix below the grid scale (the fluid phases have no species or heat diffusion otherwise). Unity Lewis number; flux form, so species mass and energy are conserved.
+- Restricted to the mixing layer: the mixture fraction $z = (Y_\text{tracer} - Y_\text{air})/(Y_\text{products} - Y_\text{air})$ of an inert tracer (`tracer`, default `N2`; `YAir`, `YProducts`) must lie in $(z_\text{min}, 1 - z_\text{min})$ (`zMin`, default 1e-3). The face coefficient is interpolated from the masked cell values, so the layer can widen. Shocks in air and the products core get nothing. The mask is cached per time step and cleared on mesh changes (AMR).
+- `D` is a `Function1` of time [m²/s]. The intended use is a mixing-layer growth law $D = C\,w\,\dot w$, e.g. from the 3D TNT fireball widths of Balakrishnan et al. (2010, Shock Waves 20:147): $w/r_0 = \max(7.4\tau,\ 19.7\tau^{1.56})$, $\tau = t[\text{ms}]/W^{1/3}$.
+- blastEulerFoam: the term enters through the fvModels of the implicit stage (`YEqn` of `multicomponentBlastThermo`, energy equation of `fluidPhaseModel`); the fields are listed in `addSupFields()` so that `fvTimeIntegrator` solves them.
+- Calibration in progress on FOI shot 4 in 1D (development plan, Stage 6). No `tests/` verification case yet.
+
 ---
 
 ## 3. Solver & Compressible System Changes
