@@ -43,3 +43,23 @@ cd <dir> && ./Allrun
   101325 Pa and 293.15 K (not recorded).
 - Domain 4 m (0.5 mm to 0.1 m, graded to 15 mm), probes at the slant distances
   of the gauges inside the domain.
+
+## Analysis scripts (`analysis/`)
+
+Scripts of the shot 4 studies of 2026-11-10 to 11-16 (results in
+`report/development_plan.md`, Stage 6; handoff in `report/handoff_2026-11-16.md`).
+Run directories are taken from `FOI2013_RUNS` (default: the working directory)
+where a script needs them.
+
+- `setup_mix.py`: shot 4 with the subgrid mixing fvModel `turbulentMixingDiffusion`,
+  D = C w dw/dt from the Balakrishnan et al. (2010) mixing-layer widths;
+  `monitor_mix.py` (run health, burnt fraction, probes against the laminar run),
+  `o2burn.py` (burnt fraction by O2 consumption), `afterburn.py` (species and
+  energy budget).
+- `map1d.py` (map a 1D solution onto a longer 1D mesh), `deposit_energy.py`
+  (energy sensitivity), `esens_table.py`, `isentrope.py` (products isentrope
+  against EuDetCode).
+- 2D: `setup_free2d.py` (free field, centre or booster initiation),
+  `monitor_free2d.py`, `booster_compare.py`, `pmax2d.py`, `stem2d.py`,
+  `waveforms.py` (ground pressure against the measurement).
+
