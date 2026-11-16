@@ -1,0 +1,5 @@
+#!/bin/sh
+cd "${0%/*}" || exit
+
+rm -rf 0 0.* [1-9]* postProcessing log.* constant/polyMesh constant/fvModels \
+    constant/phaseProperties system

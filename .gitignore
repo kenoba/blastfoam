@@ -125,3 +125,4 @@ tests/0D/alBurning_0D/constant/thermo.nasa9Gas
 tests/0D/alBurningProducts_0D/constant/thermo.nasa9Gas
 tests/0D/gasKinetics_0D/constant/thermo.nasa9Gas
 tests/0D/gasKinetics_0D/constant/reactions.gas
+tests/1D/turbulent_mixing_diffusion/

@@ -430,6 +430,12 @@ def main():
             msg = "Planar ZND detonation coupled with pressurePhaseTransfer verified (< 1% front speed, active phase conversion)" if passed else f"Failed: {((stderr or stdout).strip().splitlines() or [''])[-1][:200]}"
             results.append(TestResult("Planar ZND Detonation with Phase Transfer", 2, dur, passed, msg))
 
+            # Subgrid products/air mixing (fvModel turbulentMixingDiffusion)
+            code, stdout, stderr, dur = run_command(f"{sys.executable} tests/1D/verify_turbulent_mixing_diffusion.py", timeout=900)
+            passed = (code == 0)
+            msg = "turbulentMixingDiffusion: N2/CO step within 1e-3 of the erfc solution with D(t), conservative, masked outside the mixing layer, energy follows the species" if passed else f"Failed: {((stderr or stdout).strip().splitlines() or [''])[-1][:200]}"
+            results.append(TestResult("Subgrid Mixing Diffusion (turbulentMixingDiffusion)", 2, dur, passed, msg))
+
         if args.tier in ["3", "all"]:
             print("--- Running Tier 3 Tests (1D/2D Blast Wave Expansion & Empirical Validation) ---")
 
