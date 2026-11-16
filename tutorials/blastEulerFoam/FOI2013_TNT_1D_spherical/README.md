@@ -54,6 +54,8 @@ where a script needs them.
 - `setup_mix.py`: shot 4 with the subgrid mixing fvModel `turbulentMixingDiffusion`,
   D = C w dw/dt from the Balakrishnan et al. (2010) mixing-layer widths;
   `monitor_mix.py` (run health, burnt fraction, probes against the laminar run),
+  `first_phase.py` (first-positive-phase arrival, peak and impulse against the
+  laminar run, ended at the first zero crossing or the secondary shock),
   `o2burn.py` (burnt fraction by O2 consumption), `afterburn.py` (species and
   energy budget).
 - `map1d.py` (map a 1D solution onto a longer 1D mesh), `deposit_energy.py`
