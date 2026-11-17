@@ -8,6 +8,9 @@ trigger-wire short. Shot N = 'Katja SkottN' (checked: 1.SET labels shot 1
 '1kg TNT 0.15 m'; the TNT peaks match Table 4.2)."""
 import os, sys
 import numpy as np
+
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                     os.environ.get("FOI2013_DATA", "../../../report/external_sources/data_sources/Katja_data/Measurements/TXT"))
 SHOTS = {1: ('TNT', 0.9103, 0.15), 2: ('TNT', 0.9425, 0.5), 3: ('TNT', 0.9093, 1), 4: ('TNT', 0.9002, 2),

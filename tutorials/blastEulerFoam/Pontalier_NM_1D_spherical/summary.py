@@ -8,6 +8,9 @@ import re
 
 import numpy as np
 
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
+
 case = os.path.dirname(os.path.abspath(__file__))
 info = open(os.path.join(case, "charge.txt")).read().split()
 p0 = float(info[info.index("p0") + 1])

@@ -13,6 +13,9 @@ import sys
 
 import numpy as np
 
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
+
 P0 = 101325.0
 
 

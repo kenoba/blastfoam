@@ -7,6 +7,9 @@ import re
 
 import numpy as np
 
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
+
 p0 = 101325.0
 case = os.path.dirname(os.path.abspath(__file__))
 path = os.path.join(case, "postProcessing", "pressureProbes", "0", "p")

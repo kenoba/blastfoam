@@ -16,6 +16,9 @@ import sys
 
 import numpy as np
 
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pontalier_data import DATA, GAUGES  # noqa: E402
 
