@@ -57,7 +57,9 @@ where a script needs them.
   `first_phase.py` (first-positive-phase arrival, peak and impulse against the
   laminar run, ended at the first zero crossing or the secondary shock),
   `o2burn.py` (burnt fraction by O2 consumption), `afterburn.py` (species and
-  energy budget).
+  energy budget), `extend_mix_table.py` (continue the D(t) table of a case to
+  a later end time, for a run mapped onto the 7 m mesh with `map1d.py` or
+  onto the 2D ground case; the table is otherwise held at its last value).
 - `map1d.py` (map a 1D solution onto a longer 1D mesh), `deposit_energy.py`
   (energy sensitivity), `esens_table.py`, `isentrope.py` (products isentrope
   against EuDetCode).
