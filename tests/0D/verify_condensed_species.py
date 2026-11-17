@@ -32,7 +32,7 @@ import os
 import subprocess
 import sys
 
-ROOT = "/opt/OpenFOAM/blastfoam"
+ROOT = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam")
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.join(HERE, "condensed_species")
 BASE = os.path.join(HERE, "../1D_spherical/ChargeCompBAl_1D_spherical_reacting/constant/thermo.compressibleGas")
@@ -51,8 +51,8 @@ TSTD = 298.15
 
 
 def env(cmd):
-    return ("source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1 && "
-            "source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1 && " + cmd)
+    return ("source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1 && "
+            "source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && " + cmd)
 
 
 def parse_species(path):

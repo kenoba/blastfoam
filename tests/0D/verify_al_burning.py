@@ -45,8 +45,8 @@ def burn_time(d0):
 
 
 def env(cmd):
-    return ("source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1 && "
-            "source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1 && " + cmd)
+    return ("source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1 && "
+            "source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && " + cmd)
 
 
 def load(case, name):

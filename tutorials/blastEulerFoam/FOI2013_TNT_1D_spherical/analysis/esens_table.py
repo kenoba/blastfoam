@@ -1,4 +1,6 @@
 import numpy as np, glob, re, sys
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
 p0=101325.0
 def probe(c):
     fs=sorted(glob.glob(f"{c}/postProcessing/pressureProbes/*/p"),key=lambda f:float(f.split('/')[-2]))

@@ -3,7 +3,9 @@
     waveforms.py <2D case> <out.png>"""
 import sys, glob, re, os
 import numpy as np
-sys.path.insert(0, "/opt/OpenFOAM/blastfoam/tutorials/blastEulerFoam/FOI2013_TNT_1D_spherical")
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
+sys.path.insert(0, os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/tutorials/blastEulerFoam/FOI2013_TNT_1D_spherical")
 import extract_shots as ex
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 case, out = sys.argv[1:3]

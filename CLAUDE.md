@@ -42,7 +42,7 @@ AMR in parallel: `decomposePar` does not decompose the `refinementHistory`, so c
 python3 bin/run_blast_tests.py --tier 0|1|2|3|all [--case <relpath>] [--report blast_test_report.md]
 ```
 - The runner runs `Allclean` and `Allrun` for each case and checks the solver log for FATAL, SIGFPE, NaN or a missing `End`. It then runs the matching `verify_*.py` and overwrites `blast_test_report.md`.
-- Paths are hard-coded to `/opt/OpenFOAM/blastfoam`.
+- OpenFOAM and the repository are taken from `$WM_PROJECT_DIR` and `$BLAST_DIR` (fallback `/opt/OpenFOAM/OpenFOAM-12`, `/opt/OpenFOAM/blastfoam`); source both `etc/bashrc` first. Cantera comes from `$CANTERA_ROOT` (default `/usr/local`); the `verify_equilibrium.py` driver uses `$BOOST_ROOT`/`$NLOPT_ROOT` when set. Machine-specific setup: `report/handoff_2026-11-16.md` Section 5.
 - `Allrun` scripts delete and regenerate time directories and fields. To try a case without touching the repository, copy it (with its `verify_*.py`, and for `tests/0D` also `setup_case.py`) to a scratch directory. The verifiers locate cases relative to their own directory.
 - External dependencies:
     - Tier 0 and the planar ZND verifiers use the EuDetCode build in `external/eudetcode`, a separate git checkout not tracked by this repository (Tier 0 needs its GoogleTest binary `build/tests/eudetcode_tests`).

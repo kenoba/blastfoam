@@ -38,8 +38,8 @@ TESTS_1D_DIR = os.path.dirname(os.path.abspath(__file__))
 def run_command(cmd, cwd=None, timeout=300):
     """Run shell command with OpenFOAM environment sourced."""
     prefix = ""
-    of_bashrc = "/opt/OpenFOAM/OpenFOAM-12/etc/bashrc"
-    bf_bashrc = "/opt/OpenFOAM/blastfoam/etc/bashrc"
+    of_bashrc = os.path.join(os.environ.get("WM_PROJECT_DIR", "/opt/OpenFOAM/OpenFOAM-12"), "etc", "bashrc")
+    bf_bashrc = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/etc/bashrc"
     if os.path.isfile(of_bashrc):
         prefix += f"source {of_bashrc} >/dev/null 2>&1 && "
     if os.path.isfile(bf_bashrc):

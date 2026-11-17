@@ -19,12 +19,14 @@ import re
 import sys
 
 import numpy as np
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
 import matplotlib
 import matplotlib.ticker
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-CODE = "/opt/OpenFOAM/blastfoam"
+CODE = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam")
 RESULTS = os.environ.get("BLAST_RESULTS_DIR", CODE)
 FIG_DIR = os.path.join(CODE, "report/figures")
 EUDET = os.path.join(CODE, "utilities/thermo_fitter/eudet_compBAl")

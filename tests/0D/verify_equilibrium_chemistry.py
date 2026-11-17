@@ -40,7 +40,7 @@ import shutil
 import subprocess
 import sys
 
-ROOT = "/opt/OpenFOAM/blastfoam"
+ROOT = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam")
 HERE = os.path.dirname(os.path.abspath(__file__))
 CASE = os.path.join(HERE, "equilibriumChemistry_0D")
 WORK = os.path.join(HERE, "equilibrium_chemistry")
@@ -61,8 +61,8 @@ SCENARIOS = [
 
 def env(cmd):
     return (
-        "source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1 && "
-        "source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1 && " + cmd
+        "source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1 && "
+        "source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && " + cmd
     )
 
 

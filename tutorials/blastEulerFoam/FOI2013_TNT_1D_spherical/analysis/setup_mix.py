@@ -17,7 +17,7 @@ import re
 import subprocess
 import sys
 
-BLAST = "/opt/OpenFOAM/blastfoam"
+BLAST = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam")
 TUT = os.path.join(BLAST, "tutorials/blastEulerFoam/FOI2013_TNT_1D_spherical")
 
 ap = argparse.ArgumentParser()

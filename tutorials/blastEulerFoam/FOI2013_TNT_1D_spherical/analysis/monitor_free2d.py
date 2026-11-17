@@ -6,6 +6,8 @@ against ctr per angle (arrival, peak, impulse in the first 1.5 ms, humps).
 Prints flags that call for stopping or changing the runs."""
 import os, re, subprocess, time, json, glob
 import numpy as np
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
 D = os.path.join(os.environ.get("FOI2013_RUNS", os.getcwd()), "free2d")
 STATE = os.path.join(D, "monitor_state.json")
 P0 = 101325.0

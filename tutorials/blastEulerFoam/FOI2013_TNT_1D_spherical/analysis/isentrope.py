@@ -5,6 +5,8 @@ then the frozen Abel-Nobel/nasa9 gas) against the EuDetCode BKW isentrope
     isentrope.py <case> <eudet dir>"""
 import math, re, sys, os
 import numpy as np
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
 case, eud = sys.argv[1:3]
 R = 8.314462618
 con = os.path.join(case, "constant")

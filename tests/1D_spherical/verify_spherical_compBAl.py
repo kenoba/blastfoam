@@ -64,7 +64,7 @@ def run_case_if_needed():
         print(f"Running Allrun in {CASE_DIR}...")
         import subprocess
         allrun = os.path.join(CASE_DIR, "Allrun")
-        cmd = f"bash -c 'source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1 && source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1 && {allrun}'"
+        cmd = f"bash -c 'source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1 && source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && {allrun}'"
         subprocess.run(cmd, shell=True, cwd=CASE_DIR, check=True)
 
 

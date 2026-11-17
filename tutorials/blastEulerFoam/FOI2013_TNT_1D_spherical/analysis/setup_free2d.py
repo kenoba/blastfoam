@@ -4,7 +4,7 @@ no 1D mapping), with the initiation point on the axis at height yi above
 the charge centre (booster at the top: yi ~ R - r_booster).
     setup_free2d.py <1D case> <out> <yi> [--chem off] [--np 6] [--end 6.5e-3]"""
 import argparse, os, re, shutil, sys, math
-T2D = "/opt/OpenFOAM/blastfoam/tutorials/blastEulerFoam/FOI2013_TNT_2D_axi_ground"
+T2D = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/tutorials/blastEulerFoam/FOI2013_TNT_2D_axi_ground"
 sys.path.insert(0, T2D)
 import setup_foi2013_2d as s
 ap = argparse.ArgumentParser()

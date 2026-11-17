@@ -16,7 +16,7 @@ import re
 
 # Repository to test; BLASTFOAM_ROOT can point at a scratch copy, so that
 # the cases are run without changing the checkout
-BLASTFOAM_ROOT = os.environ.get("BLASTFOAM_ROOT", "/opt/OpenFOAM/blastfoam")
+BLASTFOAM_ROOT = os.environ.get("BLASTFOAM_ROOT", os.environ.get("BLAST_DIR", os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam")))
 
 
 class TestResult:
@@ -30,8 +30,8 @@ class TestResult:
 
 def get_openfoam_env_prefix():
     """Return prefix to source OpenFOAM-12 and blastfoam environment."""
-    of_bashrc = "/opt/OpenFOAM/OpenFOAM-12/etc/bashrc"
-    bf_bashrc = "/opt/OpenFOAM/blastfoam/etc/bashrc"
+    of_bashrc = os.path.join(os.environ.get("WM_PROJECT_DIR", "/opt/OpenFOAM/OpenFOAM-12"), "etc", "bashrc")
+    bf_bashrc = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/etc/bashrc"
     prefix = ""
     if os.path.isfile(of_bashrc):
         prefix += f"source {of_bashrc} >/dev/null 2>&1 && "

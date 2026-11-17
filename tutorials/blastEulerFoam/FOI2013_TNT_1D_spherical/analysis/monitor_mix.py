@@ -9,10 +9,12 @@ import subprocess
 import time
 
 import numpy as np
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
 
 ROOT = os.environ.get("FOI2013_RUNS", os.getcwd())  # directory with mix/ and s4_lam_new/
-ENV = ("source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1; "
-       "source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1; ")
+ENV = ("source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1; "
+       "source $BLAST_DIR/etc/bashrc >/dev/null 2>&1; ")
 p0 = 101325.0
 
 

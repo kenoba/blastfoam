@@ -2,6 +2,8 @@
 """Booster (top) vs centre (ctr) initiation in the 2D free field: positive-phase
 impulse, hump times after arrival, and traces at the gauge angles."""
 import os, sys, importlib.util, numpy as np
+if not hasattr(np, "trapezoid"):  # numpy < 2.0
+    np.trapezoid = np.trapz
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 spec = importlib.util.spec_from_file_location("m", os.path.join(os.path.dirname(os.path.abspath(__file__)), "monitor_free2d.py"))
 src = open(spec.origin).read().split("res = {}")[0]; m = {}; exec(src, m)

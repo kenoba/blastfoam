@@ -19,7 +19,7 @@ import os
 import subprocess
 import sys
 
-ROOT = "/opt/OpenFOAM/blastfoam"
+ROOT = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam")
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, "utilities/thermo_fitter"))
 import nasa9_species as n  # noqa: E402
@@ -36,8 +36,8 @@ WORK = os.path.join(HERE, "nasa9_thermo")
 
 def env(cmd):
     return (
-        "source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1 && "
-        "source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1 && " + cmd
+        "source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1 && "
+        "source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && " + cmd
     )
 
 
@@ -75,8 +75,8 @@ def main():
             if len(r) == 5 and all(isnum(x) for x in r[1:])]
 
     eu = n.load_eudet(os.path.join(ROOT, "external/eudetcode/Data/GasFlame.json"))
-    ca = n.load_cantera(["/usr/local/share/cantera/data/nasa_gas.yaml",
-                         "/usr/local/share/cantera/data/nasa_condensed.yaml"])
+    ca = n.load_cantera([os.path.join(os.environ.get("CANTERA_ROOT", "/usr/local"), "share/cantera/data/nasa_gas.yaml"),
+                         os.path.join(os.environ.get("CANTERA_ROOT", "/usr/local"), "share/cantera/data/nasa_condensed.yaml")])
     conv = {}
     for name in SPECIES:
         src, origin = n.source(name, eu, ca)

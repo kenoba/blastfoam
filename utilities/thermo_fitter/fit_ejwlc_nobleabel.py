@@ -149,7 +149,7 @@ def eval_nasa_sensible_energy(species_name, T, T_ref=298.15):
 def run_eudetcode(composition, density, eos="BKW", inert=None, outdir="thermo_fit_output"):
     """Execute in-tree external/eudetcode/build/src/CJDetonation."""
     os.makedirs(outdir, exist_ok=True)
-    binary = "/opt/OpenFOAM/blastfoam/external/eudetcode/build/src/CJDetonation"
+    binary = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/external/eudetcode/build/src/CJDetonation"
     if not os.path.isfile(binary):
         raise FileNotFoundError(f"EuDetCode binary not found at: {binary}. Please build external/eudetcode first.")
 
@@ -164,7 +164,7 @@ def run_eudetcode(composition, density, eos="BKW", inert=None, outdir="thermo_fi
     if inert:
         cmd.extend(["--inert", str(inert)])
 
-    cwd = "/opt/OpenFOAM/blastfoam/external/eudetcode"
+    cwd = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/external/eudetcode"
     print(f"Running EuDetCode: {' '.join(cmd)}")
     res = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     if res.returncode != 0:

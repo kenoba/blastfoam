@@ -36,7 +36,7 @@ CASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "planar_znd"
 DX = 0.2 / 400.0  # 0.0005 m (0.5 mm)
 
 
-REF_DIR = "/opt/OpenFOAM/blastfoam/utilities/thermo_fitter/eudet_compB"
+REF_DIR = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/utilities/thermo_fitter/eudet_compB"
 
 
 def get_eudetcode_reference():

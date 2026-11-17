@@ -22,7 +22,7 @@ DX = 0.2 / 400.0  # 0.0005 m (0.5 mm)
 V_CELL = DX * 0.001 * 0.001  # Cell volume (1D unit depth)
 
 
-REF_DIR = "/opt/OpenFOAM/blastfoam/utilities/thermo_fitter/eudet_compB"
+REF_DIR = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/utilities/thermo_fitter/eudet_compB"
 
 
 def get_eudetcode_reference():

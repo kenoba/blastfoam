@@ -1,5 +1,5 @@
-import re, sys, numpy as np
-sys.path.insert(0, "/opt/OpenFOAM/blastfoam/tests/1D_spherical")
+import os, re, sys, numpy as np
+sys.path.insert(0, os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/tests/1D_spherical")
 import kingery_bulmash as kb
 def rd(f):
     s = open(f).read(); m = re.search(r"nonuniform\s+List<scalar>\s*(\d+)\s*\(", s)

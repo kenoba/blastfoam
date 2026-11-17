@@ -31,8 +31,7 @@ int main(int argc, char *argv[]) {
     const double tEnd = std::atof(argv[5]);
     const int nOut = argc > 6 ? std::atoi(argv[6]) : 200;
 
-    IdealGasReactor r;
-    r.insert(sol);
+    IdealGasReactor r(sol);  // Cantera >= 3.1 (Reactor::insert was removed in 3.2)
     ReactorNet net;
     net.addReactor(r);
     net.setTolerances(1e-10, 1e-16);

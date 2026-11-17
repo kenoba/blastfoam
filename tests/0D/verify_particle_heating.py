@@ -50,8 +50,8 @@ def nusselt(Re, Pr, MaByRe):
 
 
 def env(cmd):
-    return ("source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1 && "
-            "source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1 && " + cmd)
+    return ("source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1 && "
+            "source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && " + cmd)
 
 
 def run_case(name, d, p, T, Tp, U0, alpha, dt, t_end):

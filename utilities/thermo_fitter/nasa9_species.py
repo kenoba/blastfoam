@@ -300,15 +300,15 @@ def entry(name, coeffs, base, origin, err, as_gas=False):
 
 
 def main():
-    root = "/opt/OpenFOAM/blastfoam"
+    root = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam")
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--base", required=True)
     ap.add_argument("--species", nargs="+", required=True)
     ap.add_argument("--eudet", default=os.path.join(root, "external/eudetcode/Data/GasFlame.json"))
-    ap.add_argument("--cantera-gas", default="/usr/local/share/cantera/data/nasa_gas.yaml")
-    ap.add_argument("--cantera-mech", default="/usr/local/share/cantera/data/gri30.yaml",
+    ap.add_argument("--cantera-gas", default=os.path.join(os.environ.get("CANTERA_ROOT", "/usr/local"), "share/cantera/data/nasa_gas.yaml"))
+    ap.add_argument("--cantera-mech", default=os.path.join(os.environ.get("CANTERA_ROOT", "/usr/local"), "share/cantera/data/gri30.yaml"),
                     help="lowest-priority source (GRI-3.0 NASA-7, e.g. for CH2O)")
-    ap.add_argument("--cantera-condensed", default="/usr/local/share/cantera/data/nasa_condensed.yaml")
+    ap.add_argument("--cantera-condensed", default=os.path.join(os.environ.get("CANTERA_ROOT", "/usr/local"), "share/cantera/data/nasa_condensed.yaml"))
     ap.add_argument("-o", "--output")
     ap.add_argument("--check", action="store_true", help="compare Cp, H, S with the source")
     ap.add_argument("--condensed-as-gas", action="store_true",

@@ -41,7 +41,7 @@ import sys
 
 import numpy as np
 
-ROOT = "/opt/OpenFOAM/blastfoam"
+ROOT = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam")
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.join(HERE, "equilibrium")
 EUDET = os.path.join(ROOT, "external/eudetcode")
@@ -63,8 +63,8 @@ PRODUCTS = {"H2": 0.00433265, "N2": 0.28739527, "CO": 0.28672579,
 
 def env(cmd):
     return (
-        "source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1 && "
-        "source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1 && " + cmd
+        "source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1 && "
+        "source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && " + cmd
     )
 
 
@@ -174,11 +174,24 @@ def build_driver(exe):
     inc = " ".join(f"-I{EUDET}/src/{d}" for d in ["", "ThermoChemistry", "ThermoChemistry/EosMixture",
                                                     "ThermoChemistry/EosPure", "ThermoChemistry/Kinetics",
                                                     "Numerics"])
+    # Boost and NLopt as used for the EuDetCode build: $BOOST_ROOT (module boost)
+    # and $NLOPT_ROOT if set, otherwise the system libraries in /usr/lib64
+    boost, nlopt = os.environ.get("BOOST_ROOT"), os.environ.get("NLOPT_ROOT")
+    if boost:
+        inc += f" -I{boost}/include"
+        boost_libs = (f"-L{boost}/lib -Wl,-rpath,{boost}/lib "
+                      "-lboost_json -lboost_program_options -lboost_container")
+    else:
+        boost_libs = ("/usr/lib64/libboost_json.so.1.90.0 /usr/lib64/libboost_program_options.so.1.90.0 "
+                      "/usr/lib64/libboost_container.so.1.90.0")
+    if nlopt:
+        inc += f" -I{nlopt}/include"
+        nlopt_lib = f"-L{nlopt}/lib64 -Wl,-rpath,{nlopt}/lib64 -lnlopt"
+    else:
+        nlopt_lib = "/usr/lib64/libnlopt.so.1.0.0"
     libs = " ".join([
         f"-Wl,--whole-archive {b}/src/ThermoChemistry/libeudetcode_thermochemistry.a -Wl,--no-whole-archive",
-        "/usr/lib64/libnlopt.so.1.0.0", f"{b}/src/Numerics/libeudetcode_numerics.a",
-        "/usr/lib64/libboost_json.so.1.90.0", "/usr/lib64/libboost_program_options.so.1.90.0",
-        "/usr/lib64/libboost_container.so.1.90.0"])
+        nlopt_lib, f"{b}/src/Numerics/libeudetcode_numerics.a", boost_libs])
     cmd = (f"c++ -O2 -std=gnu++20 -DNDEBUG -DUSE_NLOPT {inc} -isystem /usr/include/eigen3 "
            f"{DRIVER_SRC} -o {exe} {libs}")
     subprocess.run(cmd, shell=True, check=True)

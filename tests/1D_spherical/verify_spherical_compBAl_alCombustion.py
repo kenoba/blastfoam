@@ -53,7 +53,7 @@ def energy_drift(case_dir, t_start=8e-6):
 
     # Formation enthalpies [J/kg] of the gas species at 298.15 K, from the
     # gas thermo of the case (JANAF or nasa9)
-    sys.path.insert(0, "/opt/OpenFOAM/blastfoam/utilities/thermo_fitter")
+    sys.path.insert(0, os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam") + "/utilities/thermo_fitter")
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                     "..", "..", "utilities", "thermo_fitter"))
     import products_only_fit as pof
@@ -105,7 +105,7 @@ def run_case_if_needed():
         print(f"Running Allrun in {CASE_DIR}...")
         import subprocess
         allrun = os.path.join(CASE_DIR, "Allrun")
-        cmd = f"bash -c 'source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1 && source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1 && {allrun}'"
+        cmd = f"bash -c 'source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1 && source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && {allrun}'"
         subprocess.run(cmd, shell=True, cwd=CASE_DIR, check=True)
 
 

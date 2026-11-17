@@ -10,7 +10,7 @@ mixtures of the Comp-B/Al detonation product gases (pressurePhaseChange
 target fractions without C(gr) and Al2O3(s)) with air, and compared with the
 full GRI-3.0 mechanism (53 species, 325 reactions) in a Cantera
 constant-volume reactor (utilities/mechanism/cantera_cv_ignition.cpp, built
-against /usr/local Cantera).
+against the Cantera in $CANTERA_ROOT, default /usr/local).
 
 Conditions: 50% and 80% air by mass; 1200, 1500 and 2000 K; 1, 10 and 50 bar.
 
@@ -29,12 +29,13 @@ import sys
 
 import numpy as np
 
-ROOT = "/opt/OpenFOAM/blastfoam"
+ROOT = os.environ.get("BLAST_DIR", "/opt/OpenFOAM/blastfoam")
 HERE = os.path.dirname(os.path.abspath(__file__))
 CASE = os.path.join(HERE, "gasKinetics_0D")
 WORK = os.path.join(HERE, "gas_kinetics")
 DRIVER_SRC = os.path.join(ROOT, "utilities/mechanism/cantera_cv_ignition.cpp")
-GRI = "/usr/local/share/cantera/data/gri30.yaml"
+CANTERA = os.environ.get("CANTERA_ROOT", "/usr/local")
+GRI = os.path.join(CANTERA, "share/cantera/data/gri30.yaml")
 
 PRODUCTS = {"H2": 0.00433265, "N2": 0.28739527, "CO": 0.28672579,
             "H2O": 0.11160467, "CO2": 0.15365548, "NH3": 0.00144386,
@@ -45,8 +46,8 @@ RISES = (50, 200, 400)
 
 def env(cmd):
     return (
-        "source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc >/dev/null 2>&1 && "
-        "source /opt/OpenFOAM/blastfoam/etc/bashrc >/dev/null 2>&1 && " + cmd
+        "source $WM_PROJECT_DIR/etc/bashrc >/dev/null 2>&1 && "
+        "source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && " + cmd
     )
 
 
@@ -65,8 +66,9 @@ def ystr(Y):
 def build_driver(exe):
     if os.path.exists(exe) and os.path.getmtime(exe) > os.path.getmtime(DRIVER_SRC):
         return
-    subprocess.run(["g++", "-O2", "-std=c++17", "-I/usr/local/include", DRIVER_SRC, "-o", exe,
-                    "-L/usr/local/lib", "-lcantera_shared", "-Wl,-rpath,/usr/local/lib"], check=True)
+    subprocess.run(["g++", "-O2", "-std=c++17", f"-I{CANTERA}/include", f"-I{CANTERA}/include/cantera/ext",
+                    DRIVER_SRC, "-o", exe, f"-L{CANTERA}/lib", "-lcantera_shared",
+                    f"-Wl,-rpath,{CANTERA}/lib"], check=True)
 
 
 def cantera(exe, T0, p0, Y, tEnd, nOut=4000):
