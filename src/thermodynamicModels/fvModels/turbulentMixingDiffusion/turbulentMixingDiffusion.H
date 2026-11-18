@@ -52,7 +52,12 @@ Description
     with the rest, and the normalisation would convert it into the others
     (an omitted N2 tracer turned into 6% extra products carbon in the FOI
     2013 shot 4 runs). The list is checked against the phase thermo at the
-    first source call.
+    first source call. For the same reason the species need tight solves
+    (tolerance <= 1e-12, relTol 0; a warning is given otherwise): the
+    species are solved one by one, so their solver errors do not sum to
+    zero, and the normalisation turns the difference into element changes
+    (tolerance 1e-9 gave gas carbon +5e-3 by 3 ms in the same runs, 1e-15
+    1e-7).
 
 Usage
     \verbatim

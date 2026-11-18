@@ -465,6 +465,18 @@ def main():
             s = re.sub(r"^(\s*)symmetry(\s*)$", r"\1ground\2", s, flags=re.M)
             open(os.path.join(out, "0", f), "w").write(s)
 
+    fvm = os.path.join(out, "constant", "fvModels")
+    if os.path.isfile(fvm) and "turbulentMixingDiffusion" in open(fvm).read():
+        # Tight species solves: the gas thermo normalises the mass fractions after the
+        # species are solved one by one, so the diffusion solver error would turn
+        # into element changes (turbulentMixingDiffusion warns above 1e-12)
+        fs = os.path.join(out, "system/fvSolution")
+        s, n = re.subn(r'("[^"\n]*\\.gas[^"\n]*"\s*\{[^}]*?tolerance\s+)[^;]+;', r"\g<1>1e-15;",
+                       open(fs).read())
+        if n != 1:
+            sys.exit(f"{fs}: no single species solver entry to tighten")
+        open(fs, "w").write(s)
+
     ratio = products_ratio(os.path.join(oneD, "constant", "fvModels"))
     open(os.path.join(out, "constant", "dynamicMeshDict"), "w").write(
         dynamic_mesh(levels, a.mixingLevel, ratio, a.pressureDelta))

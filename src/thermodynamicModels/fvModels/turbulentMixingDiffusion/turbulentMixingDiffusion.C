@@ -91,6 +91,35 @@ void Foam::fv::turbulentMixingDiffusion::checkSpecies() const
     }
     speciesChecked_ = true;
 
+    // The species are solved one by one and normalised afterwards, so the
+    // solver error of each diffusion solve changes their sum and the
+    // normalisation turns it into element changes (gas carbon +5e-3 by 3 ms
+    // with tolerance 1e-9 in the FOI 2013 shot 4 1D runs, C = 0.03)
+    const dictionary& solvers = mesh().solution().solversDict();
+    forAll(species_, i)
+    {
+        const word fieldName(IOobject::groupName(species_[i], phaseName_));
+        const dictionary* sdPtr = solvers.subDictPtr(fieldName);
+        if (!sdPtr)
+        {
+            continue;
+        }
+        const dictionary& sd = *sdPtr;
+        const scalar tol = sd.lookupOrDefault<scalar>("tolerance", 1e-6);
+        const scalar relTol = sd.lookupOrDefault<scalar>("relTol", 0);
+        if (tol > 1e-12 || relTol > 0)
+        {
+            WarningInFunction
+                << "Solver of " << fieldName << ": tolerance " << tol
+                << ", relTol " << relTol << nl
+                << "    " << name() << " needs tight species solves "
+                << "(tolerance <= 1e-12, relTol 0, e.g. 1e-15): the "
+                << "normalisation of the mass fractions turns the solver "
+                << "error into element changes." << endl;
+            break;
+        }
+    }
+
     const word thermoName
     (
         IOobject::groupName(physicalProperties::typeName, phaseName_)

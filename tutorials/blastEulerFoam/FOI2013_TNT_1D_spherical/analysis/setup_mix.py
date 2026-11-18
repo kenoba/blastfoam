@@ -101,6 +101,16 @@ s = s.replace("// **************************************************************
               block + "\n// ************************************************************************* //", 1)
 open(fv, "w").write(s)
 
+# Tight species solves: the gas thermo normalises the mass fractions after the
+# species are solved one by one, so the diffusion solver error would turn
+# into element changes (turbulentMixingDiffusion warns above 1e-12)
+fs = os.path.join(a.out, "system/fvSolution")
+s, n = re.subn(r'("[^"\n]*\\.gas[^"\n]*"\s*\{[^}]*?tolerance\s+)[^;]+;', r"\g<1>1e-15;",
+               open(fs).read())
+if n != 1:
+    sys.exit(f"{fs}: no single species solver entry to tighten")
+open(fs, "w").write(s)
+
 # Probes at Balakrishnan's Z = 0.80 and 1.38 m/kg^1/3 for this charge
 cd = os.path.join(a.out, "system/controlDict")
 s = open(cd).read()
