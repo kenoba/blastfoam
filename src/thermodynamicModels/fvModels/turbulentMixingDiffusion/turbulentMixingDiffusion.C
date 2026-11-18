@@ -30,6 +30,9 @@ License
 #include "fvmLaplacian.H"
 #include "surfaceInterpolate.H"
 #include "Time.H"
+#include "fluidBlastThermo.H"
+#include "basicSpecieBlastMixture.H"
+#include "physicalProperties.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -76,6 +79,60 @@ void Foam::fv::turbulentMixingDiffusion::readCoeffs()
 
     maskPtr_.clear();
     maskTimeIndex_ = -1;
+    speciesChecked_ = false;
+}
+
+
+void Foam::fv::turbulentMixingDiffusion::checkSpecies() const
+{
+    if (speciesChecked_)
+    {
+        return;
+    }
+    speciesChecked_ = true;
+
+    const word thermoName
+    (
+        IOobject::groupName(physicalProperties::typeName, phaseName_)
+    );
+    if (!mesh().foundObject<fluidBlastThermo>(thermoName))
+    {
+        WarningInFunction
+            << "No thermo " << thermoName << " found; the species list of "
+            << name() << " is not checked" << endl;
+        return;
+    }
+
+    const basicSpecieBlastMixture* mixturePtr =
+        dynamic_cast<const basicSpecieBlastMixture*>
+        (
+            &mesh().lookupObject<fluidBlastThermo>(thermoName)
+        );
+    if (!mixturePtr)
+    {
+        return;
+    }
+
+    wordList missing;
+    forAll(mixturePtr->species(), i)
+    {
+        const word& s = mixturePtr->species()[i];
+        if (findIndex(species_, s) == -1)
+        {
+            missing.append(s);
+        }
+    }
+
+    if (missing.size())
+    {
+        FatalIOErrorInFunction(coeffs())
+            << "Species " << missing << " of phase " << phaseName_
+            << " are not in the species list of " << name() << nl
+            << "    All species, the default specie included, must be "
+            << "diffused: the thermo normalises the mass fractions when the "
+            << "phase receives mass transfer, which converts an undiffused "
+            << "species into the others." << exit(FatalIOError);
+    }
 }
 
 
@@ -171,7 +228,8 @@ Foam::fv::turbulentMixingDiffusion::turbulentMixingDiffusion
     zMin_(1e-3),
     D_(),
     maskPtr_(),
-    maskTimeIndex_(-1)
+    maskTimeIndex_(-1),
+    speciesChecked_(false)
 {
     readCoeffs();
 }
@@ -218,6 +276,8 @@ void Foam::fv::turbulentMixingDiffusion::addSup
         return;
     }
 
+    checkSpecies();
+
     eqn += fvm::laplacian(Gamma(rho), field);
 }
 
@@ -234,6 +294,8 @@ void Foam::fv::turbulentMixingDiffusion::addSup
     {
         return;
     }
+
+    checkSpecies();
 
     eqn += fvm::laplacian(Gamma(alpha*rho), field);
 }

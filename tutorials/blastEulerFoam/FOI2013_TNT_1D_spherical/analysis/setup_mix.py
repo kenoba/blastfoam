@@ -62,12 +62,13 @@ def D(t):
 ts = sorted(set([0.0] + [a.endTime * (i / 400.0) ** 2 for i in range(1, 401)]))
 table = "\n".join(f"            ({t:.6e} {D(t):.6e})" for t in ts)
 
-# Species of the gas (without the default specie and the Al species, all zero)
+# All species of the gas, the default specie (N2, the tracer) included: the
+# gas receives the products by mass transfer, so its thermo solves every
+# species and normalises; an undiffused species would be converted into the
+# others (the model checks the list)
 pp = open(os.path.join(a.out, "constant/physicalProperties.gas")).read()
 spec = re.search(r"\nspecies\s*\((.*?)\);", pp, re.S).group(1).split()
 spec = [s.strip('"') for s in spec]
-default = re.search(r"defaultSpecie\s+(\S+);", pp).group(1)
-spec = [s for s in spec if s != default and "Al" not in s]
 YAir = 0.76
 YProd = 0.18321973
 

@@ -22,6 +22,9 @@ Pass criteria:
      the pressure uniform within 1 Pa.
   mask: the O2 step at x = 0.2 m (z = 1, outside the layer) changes as in D
      (no diffusion) within 1e-4.
+  E: species list without N2 (the default specie): the run stops with the
+     missing-species error (the thermo may normalise, which would convert an
+     undiffused species into the others).
   B/C: total energy conserved to 1e-9; with energy diffusion (unity Lewis
      number) the specific energy stays linear in Y_CO within 8% of the
      energy jump (the rest is pdV work of the mixing flow); without it, it
@@ -51,7 +54,9 @@ RUNS = {
     "D": ["--k", "0"],
     "B": ["--TRight", "900", "--energy", "yes"],
     "C": ["--TRight", "900", "--energy", "no"],
+    "E": ["--species", "O2,CO", "--endTime", "1e-5"],
 }
+FAILS = ("E",)  # runs that must stop with an error
 
 
 def env(cmd):
@@ -91,6 +96,8 @@ def main():
     for n, p in procs.items():
         p.wait()
         log = open(os.path.join(WORK, n, "log.blastEulerFoam")).read()
+        if n in FAILS:
+            continue
         if "FOAM FATAL" in log or "\nEnd" not in log:
             print(f"run {n}: solver did not finish")
             ok = False
@@ -125,6 +132,11 @@ def main():
     # Mask: O2 step outside the mixing layer, against no diffusion
     dO2 = np.abs(field("A", "0.001", "O2.gas") - field("D", "0.001", "O2.gas")).max()
     check(dO2 < 1e-4, f"mask: O2 at the z = 1 step differs from D = 0 by {dO2:.1e} (< 1e-4)")
+
+    # E: a species of the phase missing from the list stops the run
+    log = open(os.path.join(WORK, "E", "log.blastEulerFoam")).read()
+    check("FOAM FATAL" in log and "are not in the species list" in log,
+          "E: species list without N2 rejected")
 
     # B/C: energy follows the species with unity Lewis number
     dev = {}

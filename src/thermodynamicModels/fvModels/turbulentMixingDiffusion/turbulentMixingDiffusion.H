@@ -45,13 +45,22 @@ Description
     in flux form, so species mass and energy are conserved; the energy is the
     phase (sensible) energy, i.e. unity Lewis number.
 
+    All species of the phase must be listed, the default (inert) specie
+    included: with interphase mass transfer (e.g. products -> gas) the
+    multicomponent thermo solves every species and normalises the mass
+    fractions, so a species left out of the diffusion would not sum to one
+    with the rest, and the normalisation would convert it into the others
+    (an omitted N2 tracer turned into 6% extra products carbon in the FOI
+    2013 shot 4 runs). The list is checked against the phase thermo at the
+    first source call.
+
 Usage
     \verbatim
     mixing
     {
         type            turbulentMixingDiffusion;
         phase           gas;
-        species         (O2 N2 CO ...);
+        species         (O2 N2 CO ...);   // all species of the phase
         energy          yes;
         tracer          N2;
         YAir            0.767;
@@ -125,6 +134,9 @@ class turbulentMixingDiffusion
         mutable autoPtr<volScalarField> maskPtr_;
         mutable label maskTimeIndex_;
 
+        //- Has the species list been checked against the phase thermo
+        mutable bool speciesChecked_;
+
 
     // Private Member Functions
 
@@ -139,6 +151,9 @@ class turbulentMixingDiffusion
 
         //- Is the field one that is diffused
         bool diffuses(const word& fieldName) const;
+
+        //- Check that every species of the phase thermo is diffused
+        void checkSpecies() const;
 
 
 public:

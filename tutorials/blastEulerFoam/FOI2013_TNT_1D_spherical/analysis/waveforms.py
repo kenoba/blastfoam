@@ -25,7 +25,7 @@ def feats(t, p, thr):
     I = np.trapezoid(p[ka:j], t[ka:j])
     pk = p[(t >= ta) & (t < ta + 0.3e-3)].max()
     # cumulative impulse at fixed times after arrival
-    cum = [np.trapezoid(np.clip(p[ka:], None, None)[(t[ka:]-ta) <= s], t[ka:][(t[ka:]-ta) <= s]) for s in (0.25e-3, 0.5e-3, 1e-3, 2e-3)]
+    cum = [np.trapezoid(p[ka:][(t[ka:]-ta) <= s], t[ka:][(t[ka:]-ta) <= s]) for s in (0.25e-3, 0.5e-3, 1e-3, 2e-3)]
     # negative phase: min and time of the secondary shock (largest positive jump after t+)
     neg = (t > t[j]) & (t < t[j] + 8e-3)
     pmin = ps[neg].min(); tmin = t[neg][np.argmin(ps[neg])] - ta

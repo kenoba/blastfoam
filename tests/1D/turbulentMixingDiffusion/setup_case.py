@@ -13,6 +13,7 @@ D(t) = k t (a table Function1), so S = k t^2/2.
 
 usage: setup_case.py [--TLeft 298.15] [--TRight 298.15] [--energy yes|no]
                      [--k 1250] [--endTime 1e-3] [--nCells 200] [--D0 0]
+                     [--species O2,N2,CO]
 Writes system/, constant/phaseProperties, constant/fvModels and 0/ in the
 case directory (the directory of this script, or --case)."""
 import argparse
@@ -24,6 +25,8 @@ ap.add_argument("--TLeft", type=float, default=298.15)
 ap.add_argument("--TRight", type=float, default=298.15)
 ap.add_argument("--energy", default="no")
 ap.add_argument("--k", type=float, default=1250.0)
+ap.add_argument("--species", default="O2,N2,CO",
+                help="diffused species, comma separated (all, for the check)")
 ap.add_argument("--endTime", type=float, default=1e-3)
 ap.add_argument("--deltaT", type=float, default=1e-6)
 ap.add_argument("--nCells", type=int, default=200)
@@ -228,7 +231,7 @@ write("constant/fvModels", f"""mixing
 {{
     type            turbulentMixingDiffusion;
     phase           gas;
-    species         (O2 CO);
+    species         ({a.species.replace(",", " ")});
     energy          {a.energy};
     tracer          N2;
     YAir            1;
