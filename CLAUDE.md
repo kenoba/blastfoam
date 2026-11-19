@@ -13,14 +13,14 @@ The aluminised-charge problems target **blastEulerFoam** (multi-fluid: per-phase
     - `test/Test-*`: unit-test applications; not built by `Allwmake`.
 - `tests/`: the fork's verification cases (`0D/`, `1D/`, `1D_spherical/`, `2D_axi/`), each with a `verify_*.py` script. `2D_axi/ChargeCompBAl_2D_axi_spherical` runs on 6 processes with AMR and compares with the results of `1D_spherical/ChargeCompBAl_1D_spherical`.
 - `bin/run_blast_tests.py`: regression test runner. `utilities/` (top level): `thermo_fitter/` (eJWLC / Abel-Nobel fitter `fit_ejwlc_nobleabel.py`; `compute_omegaT.py` computes the eJWLC `omegaT` for a case; `products_only_fit.py` the Comp-B/Al entries from the EuDetCode output in `eudet_compBAl/`; `ejwlc_cj_entries.py` eJWLC entries through the CJ point without transfer (`eudet_compB/`, planar tests); `check_programmed_burn.py` checks that vDet is not below the CJ speed of the products EOS of a case, otherwise the front is overdriven and its pressure grows without bound) `mechanism/` (`make_gas_mechanism.py`: reversible GRI-3.0 H2/O2/CO/C1 subset for the gas phase below `Teq`, written to the cases' `constant/reactions.gas`; `cantera_cv_ignition.cpp`: Cantera reference reactor) and `generate_report_figures.py` (report figures from test results under `$BLAST_RESULTS_DIR`, default the repository; run the tests in a copy, e.g. `BLASTFOAM_ROOT=<copy> bin/run_blast_tests.py --tier all`, then point `BLAST_RESULTS_DIR` at it).
-- `report/`: `development_plan.md` (staged plan with current status), `stage*_*.md` (per-stage plans), `dilute_phase_conservation_plan.md` (conservative decode and dilute phases), `TBX-blastFoam.tex` (technical report).
+- `report/`: `development_plan.md` (staged plan with current status; open-work list in Section 6), `stage*_*.md` (per-stage plans), `dilute_phase_conservation_plan.md` (conservative decode and dilute phases), `TBX-blastFoam.tex` (technical report).
 
 ## Building and Running
 
 ### Environment Setup
 ```bash
-source /opt/OpenFOAM/OpenFOAM-12/etc/bashrc
-source /opt/OpenFOAM/blastfoam/etc/bashrc
+source /remote/soft2/OpenFOAM/OpenCFD/OpenFOAM-12/etc/bashrc   # old machine: /opt/OpenFOAM/OpenFOAM-12
+source ~/Packages/blastfoam/etc/bashrc                         # old machine: /opt/OpenFOAM/blastfoam
 ```
 `etc/bashrc` sets `BLAST_DIR` and `BLAST_MODULES`. `BLAST_APPBIN` and `BLAST_LIBBIN` default to `$FOAM_USER_APPBIN` and `$FOAM_USER_LIBBIN`; they are `$BLAST_DIR/bin` and `$BLAST_DIR/lib` only when `MAKE=True` or `/opt/blastfoam` exists.
 
@@ -42,12 +42,20 @@ AMR in parallel: `decomposePar` does not decompose the `refinementHistory`, so c
 python3 bin/run_blast_tests.py --tier 0|1|2|3|all [--case <relpath>] [--report blast_test_report.md]
 ```
 - The runner runs `Allclean` and `Allrun` for each case and checks the solver log for FATAL, SIGFPE, NaN or a missing `End`. It then runs the matching `verify_*.py` and overwrites `blast_test_report.md`.
-- OpenFOAM and the repository are taken from `$WM_PROJECT_DIR` and `$BLAST_DIR` (fallback `/opt/OpenFOAM/OpenFOAM-12`, `/opt/OpenFOAM/blastfoam`); source both `etc/bashrc` first. Cantera comes from `$CANTERA_ROOT` (default `/usr/local`); the `verify_equilibrium.py` driver uses `$BOOST_ROOT`/`$NLOPT_ROOT` when set. Machine-specific setup: `report/handoff_2026-11-16.md` Section 5.
+- OpenFOAM and the repository are taken from `$WM_PROJECT_DIR` and `$BLAST_DIR` (fallback `/opt/OpenFOAM/OpenFOAM-12`, `/opt/OpenFOAM/blastfoam`); source both `etc/bashrc` first. Cantera comes from `$CANTERA_ROOT` (default `/usr/local`); the `verify_equilibrium.py` driver uses `$BOOST_ROOT`/`$NLOPT_ROOT` when set. Machine-specific setup: "Current machine" below.
 - `Allrun` scripts delete and regenerate time directories and fields. To try a case without touching the repository, copy it (with its `verify_*.py`, and for `tests/0D` also `setup_case.py`) to a scratch directory. The verifiers locate cases relative to their own directory.
 - External dependencies:
     - Tier 0 and the planar ZND verifiers use the EuDetCode build in `external/eudetcode`, a separate git checkout not tracked by this repository (Tier 0 needs its GoogleTest binary `build/tests/eudetcode_tests`).
     - `tests/1D/verify_gunib1d_benchmarks.py` uses a local gunIB1D build.
 - The 0D transfer tests (`tests/0D/phaseTransfer_0D`, `phaseTransfer_0D_3phase`) run blastEulerFoam; the 3-phase variant uses `setup_case.py --three-phase` and `verify_0d_phase_transfer.py --three-phase` (both in Tier 1).
+
+### Current machine (FOI cluster, since 2026-11-16)
+- Binaries go to `$FOAM_USER_APPBIN`/`$FOAM_USER_LIBBIN`. Python: `module load python/3.10.13` (numpy 1.23: scripts need the `np.trapz` fallback for `np.trapezoid`; scipy for D4); system python 3.9 has no scipy.
+- Slurm: the Claude session runs in an interactive job on `flamme` (QOS `graf_16`, 16 cores, 8 h); its end kills every process started from it, `setsid nohup` included. `flamme` and `genau` are for pre/post-processing, compilation and short tests. Solver runs longer than a short test go to partition `serie` with `sbatch` (`--partition=serie --qos=comp_base --account=cfdnc --nodes=1 --exclusive`, 192-core nodes allocated whole, 2-day limit; use many processes; example `~/claude_scratch/foi2013_runs/s4_mix2_2D/run.sbatch`). Two `mpirun`s in one job need `OMPI_MCA_hwloc_base_binding_policy=none`. Runs past 2 days: a follow-on job with `-d afterany:<id>` that restarts from the latest decomposed write (keeps the AMR refinement history).
+- Cantera: `export CANTERA_ROOT=/remote/soft2/cantera/3.2.0-FOI` before `nasa9_species.py` and the setups that call it (`setup_foi2013.py`, `setup_mix.py`) and the Tier 1 tests. Only its data files work here (its libraries need `libfmt.so.8`/`libyaml-cpp.so.0.6`), so `verify_gas_kinetics.py` cannot link its reference reactor.
+- Tests: `module load python/3.10.13 boost/1.90.0-gcc`, `export NLOPT_ROOT=/remote/soft2/nlopt/2.7.1`, and run in a copy with `BLASTFOAM_ROOT=<copy> BLAST_DIR=<copy>`. `external/eudetcode`: `module load boost/1.90.0-gcc; cmake -S . -B build; cmake --build build -j 8`.
+- Untracked data in the checkout, never to be committed (stage files by explicit path): `report/external_sources/data_sources/` (FOI 2013 raw gauge data in `Katja_data/Measurements/TXT`, the default `FOI2013_DATA`; papers), `articles/`, `results/`, `external/`, `tutorials/blastEulerFoam/FOI2013_TNT_2D_axi_ground/foi2013_runs/`, `report/goodman_surface_temperature_plan.md`.
+- FOI 2013 run data: `~/claude_scratch/foi2013_runs` (see `report/development_plan.md` Section 6).
 
 ## Development Conventions
 - **Coding style:** OpenFOAM C++ conventions (PascalCase types, camelCase functions and variables, 4-space indentation, OpenFOAM file headers).

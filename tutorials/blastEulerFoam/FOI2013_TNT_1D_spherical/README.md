@@ -13,8 +13,9 @@ FOI-R--3913--SE (2014), Chapter 4, and Fedina, PhD thesis, Lund University (2017
   (1 MHz); pyrometer aimed about 1.5 m up at 2 m radius (650-1800 C).
 - `foi2013_data.py`: arrival, peak, positive impulse and duration at P1-P3 and
   the pyrometer maximum of each shot, from the raw files with
-  `extract_shots.py` (the raw data stay outside the repository; set
-  `FOI2013_DATA` to the `Measurements/TXT` folder). Shot N is the file
+  `extract_shots.py` (the raw data are not tracked; `FOI2013_DATA` is the
+  `Measurements/TXT` folder, default
+  `report/external_sources/data_sources/Katja_data/Measurements/TXT`). Shot N is the file
   `Katja SkottN`; the TNT peaks agree with Table 4.2 of the report.
 - Repeatability (shots 2 and 9): 3% in P2/P3 impulse, 10-11% in peak. Al effect
   at 4 and 6 m: +15 to +27% in positive impulse at every HOB.
@@ -47,7 +48,7 @@ cd <dir> && ./Allrun
 ## Analysis scripts (`analysis/`)
 
 Scripts of the shot 4 studies of 2026-11-10 to 11-16 (results in
-`report/development_plan.md`, Stage 6; handoff in `report/handoff_2026-11-16.md`).
+`report/development_plan.md`, Stage 6; open work and run data in its Section 6).
 Run directories are taken from `FOI2013_RUNS` (default: the working directory)
 where a script needs them.
 
