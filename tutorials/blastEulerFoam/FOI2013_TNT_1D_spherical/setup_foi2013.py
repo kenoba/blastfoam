@@ -6,7 +6,7 @@ shock reaches the ground; its fields are mapped into the 2D axisymmetric
 case with the ground.
 
     python3 setup_foi2013.py --shot 4 --out <case dir>
-        [--closure laminar|pasrd] [--R 4.0] [--endTime 4e-3]
+        [--closure laminar|pasrd] [--R 4.0] [--endTime 4e-3] [--np 1]
 
 Built with build_case() of ../Pontalier_NM_1D_spherical/setup_pontalier.py
 (the 2 m Comp-B/Al tutorial with the Phase D Al models, products -> gas
@@ -20,6 +20,7 @@ from the point below the charge).
 import argparse
 import math
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -30,6 +31,26 @@ import foi2013_charges as fc  # noqa: E402
 from setup_pontalier import build_case  # noqa: E402
 
 
+def parallel(out, n):
+    """Run on n processes: radial slabs of equal cell count, decomposed after
+    setRefinedFields (the 1D mesh is static)."""
+    dp = os.path.join(out, "system", "decomposeParDict")
+    s = open(dp).read()
+    s = re.sub(r"numberOfSubdomains\s+\d+;", f"numberOfSubdomains  {n};", s)
+    s = re.sub(r"\nmethod\s+\w+;", "\nmethod              simple;", s)
+    s = re.sub(r"(simpleCoeffs\s*\{[^}]*?\bn\s+)\([^)]*\)", rf"\g<1>({n} 1 1)", s)
+    open(dp, "w").write(s)
+    ar = os.path.join(out, "Allrun")
+    s = open(ar).read()
+    run = "runApplication $(getApplication)"
+    if s.count(run) != 1:
+        sys.exit(f"{ar}: no single '{run}' line")
+    s = s.replace(run, "runApplication decomposePar\nrunParallel $(getApplication)")
+    s = s.replace("rm -rf [1-9]* 0.[0-9]* postProcessing log.* constant/polyMesh dynamicCode",
+                  "rm -rf [1-9]* 0.[0-9]* postProcessing log.* constant/polyMesh dynamicCode processor*")
+    open(ar, "w").write(s)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--shot", required=True, choices=list(fc.SHOTS))
@@ -37,6 +58,8 @@ def main():
     ap.add_argument("--closure", choices=("laminar", "pasrd"), default="laminar")
     ap.add_argument("--R", type=float, default=4.0)
     ap.add_argument("--endTime", type=float, default=4e-3)
+    ap.add_argument("--np", type=int, default=1,
+                    help="processes (simple decomposition along the radius)")
     a = ap.parse_args()
     eudet = os.path.join(BLAST, "utilities/thermo_fitter/eudet_foi2013", f"shot{a.shot}")
     if not os.path.isfile(os.path.join(eudet, "cj_output.txt")):
@@ -49,6 +72,8 @@ def main():
     build_case(a.out, eudet, c, label, closure=a.closure, R=a.R, endTime=a.endTime,
                K0=8.93e9, n_murnaghan=5.5, probes=probes,
                info=f"shot {a.shot} hob {c['hob']:g}")
+    if a.np > 1:
+        parallel(a.out, a.np)
     print(f"ground gauges P1-P3 at slant distances {slant} m"
           + ("" if all(s < a.R for s in slant) else f" (beyond R = {a.R:g} m: not probed)"))
 

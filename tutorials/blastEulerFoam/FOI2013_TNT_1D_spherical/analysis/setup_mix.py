@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FOI 2013 shot 4 1D case with subgrid turbulent mixing of products and air
+"""FOI 2013 1D case (shot 4 by default) with subgrid turbulent mixing of products and air
 (fvModel turbulentMixingDiffusion in the gas species and energy).
 
 D(t) = C * w dw/dt with the mixing-layer width of Balakrishnan et al. (2010,
@@ -7,8 +7,12 @@ Shock Waves 20:147, 3D TNT): w/r0 = max(7.4 tau, 19.7 tau^1.56),
 tau = t[ms]/W^(1/3), up to tau1 (end of their implosion phase, 0.9);
 afterwards D decays as (tau1/tau)^late.
 
-usage: setup_mix.py --out DIR --C 0.01 [--endTime 3e-3] [--R 4] [--tau1 0.9]
-                    [--late 1] [--energy yes|no]
+usage: setup_mix.py --out DIR --C 0.01 [--shot 4] [--endTime 3e-3] [--R 4] [--np 1]
+                    [--tau1 0.9] [--late 1] [--energy yes|no]
+
+The width scaling uses the total charge mass (with the Al of the TNT/Al
+shots); the products tracer fraction YProducts is the N2 fraction of the
+case's products -> gas transfer composition.
 """
 import argparse
 import math
@@ -22,6 +26,8 @@ TUT = os.path.join(BLAST, "tutorials/blastEulerFoam/FOI2013_TNT_1D_spherical")
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--out", required=True)
+ap.add_argument("--shot", default="4")
+ap.add_argument("--np", default="1")
 ap.add_argument("--C", type=float, required=True)
 ap.add_argument("--endTime", type=float, default=3e-3)
 ap.add_argument("--R", type=float, default=4.0)
@@ -31,8 +37,8 @@ ap.add_argument("--energy", default="yes")
 ap.add_argument("--zMin", type=float, default=1e-3)
 a = ap.parse_args()
 
-subprocess.run([sys.executable, os.path.join(TUT, "setup_foi2013.py"), "--shot", "4",
-                "--out", a.out, "--R", str(a.R), "--endTime", str(a.endTime)], check=True)
+subprocess.run([sys.executable, os.path.join(TUT, "setup_foi2013.py"), "--shot", a.shot,
+                "--out", a.out, "--R", str(a.R), "--endTime", str(a.endTime), "--np", a.np], check=True)
 
 info = open(os.path.join(a.out, "charge.txt")).read().split()
 W = float(info[info.index("m_total") + 1])
@@ -70,7 +76,9 @@ pp = open(os.path.join(a.out, "constant/physicalProperties.gas")).read()
 spec = re.search(r"\nspecies\s*\((.*?)\);", pp, re.S).group(1).split()
 spec = [s.strip('"') for s in spec]
 YAir = 0.76
-YProd = 0.18321973
+tf = re.search(r"targetFractions\s*\{([^}]*)\}",
+               open(os.path.join(a.out, "constant/fvModels")).read()).group(1)
+YProd = float(re.search(r"\bN2\s+([0-9.eE+-]+)\s*;", tf).group(1))
 
 fv = os.path.join(a.out, "constant/fvModels")
 s = open(fv).read()
