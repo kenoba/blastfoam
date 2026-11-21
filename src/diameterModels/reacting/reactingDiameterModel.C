@@ -246,22 +246,26 @@ void Foam::diameterModels::reactingDiameterModel::solve
     const volScalarField& T
 )
 {
+    // One stage of the multi-stage time integration. As for the conserved
+    // fields of the phase system, the change is evaluated from the current
+    // stage values, then
+    //
+    //     field = (blended old stage values) + dt (blended stage changes).
+    //
+    // Before 2026-11-21 the ignited fraction and the diameter were advanced
+    // from the unblended current stage value, which with RK2SSP transported
+    // them 1.5 times faster than the particles (the ignited fraction left
+    // the particle cloud and was reset), and the mass transfer included the
+    // fall of the cell-mean diameter by transport, with the diameter not
+    // allowed to rise, which removed particles numerically (1D FOI shot 5:
+    // 23% of the particles by 1 ms, 59% of the Al mass by 16 ms, of which
+    // shrinking explained 9%).
+
     const volScalarField& alpha =
         this->d_.mesh().lookupObject<volScalarField>
         (
             IOobject::groupName("alpha", this->d_.group())
         );
-
-    volScalarField VOld
-    (
-        IOobject::groupName("V", this->d_.group()),
-        this->V()
-    );
-    this->storeAndBlendOld(VOld);
-
-    const volScalarField dOld(this->d_);
-    this->storeAndBlendOld(this->d_);
-
     const surfaceScalarField& phi
     (
         this->d_.mesh().lookupObject<surfaceScalarField>
@@ -270,25 +274,37 @@ void Foam::diameterModels::reactingDiameterModel::solve
         )
     );
     const dimensionedScalar& dT(this->d_.time().deltaT());
+    const word divScheme("div(" + phi.name() + ',' + this->d_.name() + ')');
 
+    // Burn rate of the particles at the current stage
+    volScalarField dDdt(-2.0*rate_->dDdt(pi, T));
+    if (!oxidiserPhase_.empty())
+    {
+        dDdt *= oxidiserFactor();
+    }
     if (ignitedFraction_)
     {
-        // Transport of the ignited fraction with the particles (as d), then
-        // ignition where the particles have reached Tign
-        const volScalarField ignitedOld(ignited_);
-        this->storeAndBlendOld(ignited_);
+        dDdt *= ignited_;
+    }
+    dDdt.min(0.0);
+
+    // Mass transfer: volume change of a particle by the burning alone,
+    // dV/dt = (pi/2) d^2 dd/dt, at most the particle volume in one step
+    const dimensionedScalar piBy6(dimless, constant::mathematical::pi/6.0);
+    dVdt_ = 3.0*piBy6*sqr(this->d_)*dDdt;
+    dVdt_ = max(dVdt_, -piBy6*pow3(this->d_)/dT);
+
+    // Ignited fraction: transported with the particles, then set where the
+    // particles have reached Tign
+    if (ignitedFraction_)
+    {
         volScalarField deltaPhiIgn
         (
-            fvc::div
-            (
-                phi,
-                ignited_,
-                "div(" + phi.name() + ',' + this->d_.name() + ')'
-            )
-          - ignited_*fvc::div(phi)
+            fvc::div(phi, ignited_, divScheme) - ignited_*fvc::div(phi)
         );
+        this->storeAndBlendOld(ignited_);
         this->storeAndBlendDelta(deltaPhiIgn);
-        ignited_ = ignitedOld - dT*deltaPhiIgn;
+        ignited_ -= dT*deltaPhiIgn;
         forAll(ignited_, celli)
         {
             if (alpha[celli] <= alphaMin_)
@@ -307,19 +323,12 @@ void Foam::diameterModels::reactingDiameterModel::solve
         ignited_.correctBoundaryConditions();
     }
 
-    volScalarField dDdt(-2.0*rate_->dDdt(pi, T));
-    if (!oxidiserPhase_.empty())
-    {
-        dDdt *= oxidiserFactor();
-    }
-    if (ignitedFraction_)
-    {
-        dDdt *= ignited_;
-    }
-    this->blendDelta(dDdt);
-
-    //- Change dRdt to dDdt
-    this->d_ += dT*dDdt;
+    // Diameter: transported with the particles (it may rise where larger
+    // particles are carried in) and reduced by the burning
+    volScalarField ddt(dDdt - (fvc::div(phi, this->d_, divScheme) - this->d_*fvc::div(phi)));
+    this->storeAndBlendOld(this->d_);
+    this->storeAndBlendDelta(ddt);
+    this->d_ += dT*ddt;
     forAll(this->d_, celli)
     {
         if (alpha[celli] <= alphaMin_)
@@ -332,37 +341,6 @@ void Foam::diameterModels::reactingDiameterModel::solve
         }
     }
     this->d_.correctBoundaryConditions();
-
-    dVdt_ = (this->V() - VOld)/dT;
-    dDdt = (this->d_ - dOld)/dT;
-
-    //- Compute actual delta for the time step knowing the blended
-    dDdt = this->calcAndStoreDelta(dDdt);
-    dVdt_ = this->calcAndStoreDelta(dVdt_);
-
-    volScalarField deltaPhid(fvc::div(phi, d_) - d_*fvc::div(phi));
-    this->storeAndBlendDelta(deltaPhid);
-    this->d_ = dOld - dT*(deltaPhid - dDdt);
-    forAll(this->d_, celli)
-    {
-        if (alpha[celli] <= alphaMin_)
-        {
-            this->d_[celli] = d0_[celli];
-        }
-        else
-        {
-            this->d_[celli] = Foam::max(1e-10, Foam::min(this->d_[celli], dOld[celli]));
-        }
-    }
-    this->d_.correctBoundaryConditions();
-
-    dVdt_ = (this->V() - VOld)/dT;
-    dVdt_.min(0.0);
-    dDdt = (this->d_ - dOld)/dT;
-    dDdt.min(0.0);
-
-    dDdt = this->calcAndStoreDelta(dDdt);
-    dVdt_ = this->calcAndStoreDelta(dVdt_);
 }
 
 
