@@ -67,6 +67,10 @@ Foam::diameterModels::reactingDiameterModel::reactingDiameterModel
     alphaMin_(dict.lookupOrDefault<scalar>("alphaMin", 1e-4)),
     ignitedFraction_(dict.lookupOrDefault<bool>("ignitedFraction", false)),
     Tign_(ignitedFraction_ ? dict.lookup<scalar>("Tign") : great),
+    tauIgn_
+    (
+        ignitedFraction_ ? dict.lookupOrDefault<scalar>("tauIgn", 0) : 0
+    ),
     N_
     (
         IOobject
@@ -116,8 +120,27 @@ Foam::diameterModels::reactingDiameterModel::reactingDiameterModel
         mesh,
         dimensionedScalar(dimless, 0),
         zeroGradientFvPatchScalarField::typeName
+    ),
+    ignitionProgress_
+    (
+        IOobject
+        (
+            IOobject::groupName("ignitionProgress", phaseName),
+            mesh.time().name(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            tauIgn_ > 0 ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedScalar(dimless, 0),
+        zeroGradientFvPatchScalarField::typeName
     )
 {
+    if (tauIgn_ < 0)
+    {
+        FatalIOErrorInFunction(dict)
+            << "tauIgn must not be negative" << exit(FatalIOError);
+    }
     this->requireD();
 }
 
@@ -295,11 +318,37 @@ void Foam::diameterModels::reactingDiameterModel::solve
     dVdt_ = max(dVdt_, -piBy6*pow3(this->d_)/dT);
 
     // Ignited fraction: transported with the particles, then set where the
-    // particles have reached Tign
+    // particles have reached Tign (tauIgn = 0) or have been at or above Tign
+    // for tauIgn (ignition progress, transported with the particles)
     if (ignitedFraction_)
     {
+        const bool delay = tauIgn_ > 0;
+        if (delay)
+        {
+            volScalarField deltaProgress
+            (
+                IOobject::groupName("ignitionProgressDelta", this->d_.group()),
+                fvc::div(phi, ignitionProgress_, divScheme)
+              - ignitionProgress_*fvc::div(phi)
+              - pos0(T - dimensionedScalar(dimTemperature, Tign_))
+               /dimensionedScalar(dimTime, tauIgn_)
+            );
+            this->storeAndBlendOld(ignitionProgress_);
+            this->storeAndBlendDelta(deltaProgress);
+            ignitionProgress_ -= dT*deltaProgress;
+            forAll(ignitionProgress_, celli)
+            {
+                ignitionProgress_[celli] =
+                    alpha[celli] <= alphaMin_
+                  ? 0
+                  : Foam::min(Foam::max(ignitionProgress_[celli], 0.0), 1.0);
+            }
+            ignitionProgress_.correctBoundaryConditions();
+        }
+
         volScalarField deltaPhiIgn
         (
+            IOobject::groupName("ignitedDelta", this->d_.group()),
             fvc::div(phi, ignited_, divScheme) - ignited_*fvc::div(phi)
         );
         this->storeAndBlendOld(ignited_);
@@ -311,7 +360,12 @@ void Foam::diameterModels::reactingDiameterModel::solve
             {
                 ignited_[celli] = 0;
             }
-            else if (T[celli] >= Tign_)
+            else if
+            (
+                delay
+              ? ignitionProgress_[celli] >= 1 - small
+              : T[celli] >= Tign_
+            )
             {
                 ignited_[celli] = 1;
             }
@@ -325,7 +379,11 @@ void Foam::diameterModels::reactingDiameterModel::solve
 
     // Diameter: transported with the particles (it may rise where larger
     // particles are carried in) and reduced by the burning
-    volScalarField ddt(dDdt - (fvc::div(phi, this->d_, divScheme) - this->d_*fvc::div(phi)));
+    volScalarField ddt
+    (
+        IOobject::groupName("dDelta", this->d_.group()),
+        dDdt - (fvc::div(phi, this->d_, divScheme) - this->d_*fvc::div(phi))
+    );
     this->storeAndBlendOld(this->d_);
     this->storeAndBlendDelta(ddt);
     this->d_ += dT*ddt;

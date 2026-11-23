@@ -48,9 +48,18 @@ Description
     Beckstead keeps burning wherever the cell-mean diameter is below d0, so
     the burning spreads with the mixing of the diameter field.
 
+    With tauIgn > 0 the particles ignite only after being at or above Tign
+    for tauIgn: the ignition progress ignitionProgress.<phase> grows at
+    1/tauIgn where T >= Tign, is transported with the particles like the
+    ignited fraction (so it accumulates along the particle paths and is kept
+    when they cool), and the ignited fraction is set to one where it reaches
+    one. This delays the ignition of particles heated in the early detonation
+    products to the time they are in the fireball.
+
     \verbatim
         ignitedFraction true;       // optional, default false
         Tign            2050;       // ignition temperature [K]
+        tauIgn          5e-4;       // optional ignition delay [s], default 0
     \endverbatim
 
 SourceFiles
@@ -109,6 +118,9 @@ class reactingDiameterModel
     //- Ignition temperature (with ignitedFraction)
     const scalar Tign_;
 
+    //- Ignition delay: time at or above Tign before ignition [s]
+    const scalar tauIgn_;
+
     //- Number density
     volScalarField N_;
 
@@ -120,6 +132,9 @@ class reactingDiameterModel
 
     //- Fraction of the particles that have ignited
     volScalarField ignited_;
+
+    //- Ignition progress (time at or above Tign over tauIgn)
+    volScalarField ignitionProgress_;
 
 
     // Private Member Functions
