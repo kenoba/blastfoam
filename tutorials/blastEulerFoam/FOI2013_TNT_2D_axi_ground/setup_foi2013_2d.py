@@ -340,7 +340,7 @@ def dynamic_mesh(levels, mixingLevel, ratio, pressureDelta):
                "            maxRefinement       $maxLevel;\n        }")
         body, n = re.subn(r"pressure\s*\{[^}]*\}", new, body, count=1)
         assert n == 1, "pressure estimator not found in the G2 dynamicMeshDict"
-    tab = "\n".join(f"    ({t:<12.6g} {L + 0.5:g})" for t, L in levels)
+    tab = "\n".join(f"    ({t:<16.10g} {L + 0.5:g})" for t, L in levels)
     body = re.sub(r"maxLevel\s+table\s*\([^;]*?\);",
                   f"maxLevel        table\n(\n{tab}\n);", body, count=1, flags=re.S)
     body = re.sub(r"// Level of the products/air mixing layer[^\n]*\n//[^\n]*\nmixingLevel\s+\d+;",
