@@ -191,6 +191,37 @@ The parameters are fitted to the CJ state and expansion isentrope from \texttt{E
     \label{fig:isentrope_comparison}
 \end{figure}
 
+\subsection{Parameters for the FOI 2013 TNT and TNT/Al charges}
+\label{sec:foi_charges}
+
+The charges of the FOI trials (Section~\ref{sec:res_foi}) are moulded TNT and TNT/Al 80/20 spheres (A100 aluminium, 42\,$\mu$m) of about 1\,kg (Table~4.1 of \cite{fedina2014}), initiated by 30\,g of the plastic explosive m/46 (PETN based) in a cavity at the top. The products are fitted with the conventions of the Comp-B/Al cases (\path{utilities/thermo_fitter/foi2013_charges.py}, BKW products of \texttt{EuDetCode}, products-only eJWLC fit):
+\begin{itemize}
+    \item The booster is lumped into the composition, as PETN/mineral oil 86/14 at 1500\,kg/m$^3$ (the m/46 composition is assumed), so the charge is initiated at the centre with a uniform composition instead of at the top.
+    \item TNT at 1630\,kg/m$^3$; the ambient state was not recorded and is taken as 101\,325\,Pa and 293.15\,K.
+    \item For TNT/Al, 90\% of the aluminium is inert in the fit and forms the particle phase ($\alpha_\text{Al} = 0.114$, 0.189\,kg); the other 10\% reacts in the detonation and appears as Al$_2$O$_3$ in the products.
+\end{itemize}
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{FOI 2013 shots 4 and 5: charge and products (\texttt{EuDetCode}, BKW; the booster lumped in). $\rho_0$ is the density of the products-only fit; the transfer composition is the mass fraction of the frozen products gas at 100\,bar.}
+    \label{tab:foi_charges}
+    \begin{tabular}{>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{4.8cm}>{\raggedright\arraybackslash}p{5.2cm}}
+        \toprule
+         & Shot 4 (TNT) & Shot 5 (TNT/Al 80/20) \\
+        \midrule
+        Main charge [kg] & 0.900 & 1.051 \\
+        Total with booster [kg], radius [mm] & 0.930, 51.5 & 1.081, 52.7 \\
+        Fitted composition (mass) & TNT 0.968, PETN 0.028, oil 0.005 & TNT 0.778, PETN 0.024, oil 0.004, Al 0.194 \\
+        $\rho_0$ [kg/m$^3$] & 1625 & 1641 (charge 1762) \\
+        $D_\text{CJ}$ [m/s], $p_\text{CJ}$ [GPa], $T_\text{CJ}$ [K] & 6700, 16.9, 3633 & 6534, 16.3, 3582 \\
+        Transfer composition & CO 0.274, CO$_2$ 0.215, N$_2$ 0.183, C(gr) 0.175, H$_2$O 0.128, CH$_4$ 0.021, H$_2$ 0.003 & CO 0.279, CO$_2$ 0.185, N$_2$ 0.179, C(gr) 0.171, H$_2$O 0.115, Al$_2$O$_3$(s) 0.045, CH$_4$ 0.023, H$_2$ 0.003 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The TNT products are strongly fuel-rich: 17.5\% of the transferred mass is graphite and 27\% CO, against 0.3\% H$_2$, so the products afterburning in air (CO and graphite to CO$_2$) is larger than for Comp-B, and the subgrid mixing that controls it (Section~\ref{sec:mixing_model}) has a correspondingly larger effect on the blast. Graphite and Al$_2$O$_3$ are condensed species of the gas (Section~\ref{sec:gasphase}). The aluminium particles see the gas-phase oxidisers only after the products have been transferred to the gas; the H$_2$O and CO$_2$ of the products are available to them from then on, the O$_2$ only where air has mixed in.
+
 \subsection{Limitations}
 \label{sec:jwl_limits}
 
@@ -460,7 +491,19 @@ A charge above the ground is simulated in two stages. Until the shock reaches th
 
 \subsection{Verification and validation}
 
-\emph{Verification} checks that the equations are solved correctly: conservation, agreement with exact or reference solutions, and agreement with another code solving the same model. \emph{Validation} checks that the model describes reality, by comparison with experiments. Most of the work so far is verification. The only comparison with empirical data is with the Kinney--Graham correlations for TNT, for a C4 charge (Section~\ref{sec:res_kb}); no experimental data for aluminised charges have been used yet.
+\emph{Verification} checks that the equations are solved correctly: conservation, agreement with exact or reference solutions, and agreement with another code solving the same model. \emph{Validation} checks that the model describes reality, by comparison with experiments. Most of the work is verification. The comparisons with empirical data are with the Kinney--Graham and Kingery--Bulmash correlations for TNT (Sections~\ref{sec:res_kb} and~\ref{sec:res_e1}) and with the FOI 2013 trials of TNT and TNT/Al charges (Section~\ref{sec:res_foi}).
+
+\subsection{Validation data}
+\label{sec:datasets}
+
+A dataset for the aluminised charge needs the charge composition (aluminium fraction and particle size), mass, shape and initiation; side-on or ground pressure histories at several distances in the range $Z \approx 0.5$--5\,m/kg$^{1/3}$, where the afterburning acts; and ideally a reference shot without aluminium (or with inert particles) from the same series, so that the aluminium contribution is measured directly, and the size and temperature of the fireball. No such data were found for Comp-B/Al. The candidates (survey in \path{report/h0_dataset_survey.md}) are:
+\begin{itemize}
+    \item \emph{FOI 2013} \cite{fedina2014,fedina2017}: about 1\,kg TNT and TNT/Al 80/20 spheres (42\,$\mu$m aluminium) at heights of burst of 0.15, 0.5, 1 and 2\,m, each with a TNT and a TNT/Al shot (TNT at 0.5\,m twice), ground gauges at 2, 4 and 6\,m (1\,MHz raw data available), a pyrometer and high-speed video. Pairs at the same height isolate the aluminium effect (15--27\% more impulse at 4--6\,m at every height, 130--330$^\circ$C higher fireball temperature), and the TNT repeat (shots 2 and 9) scatters by 3\% in impulse and 10--11\% in peak at 4 and 6\,m. The gauges are on the ground, so the trials need the 2D case with the ground (Section~\ref{sec:mapping}). This is the primary dataset.
+    \item \emph{Pontalier et al.} \cite{pontalier2021}: gelled nitromethane in about 1\,L glass spheres with 10--50\% aluminium (13, 54 and 114\,$\mu$m), magnesium or inert glass beads, central C-4 booster, 1.52\,m above the ground, free field at the gauges until the ground reflection. Arrival times at 1.0, 1.5 and 2.0\,m and peaks at 2\,m for 20 single shots; the inert-glass shots separate the momentum and heat sink of the particles from their burning. A 1D spherical case of these trials exists (\path{tutorials/blastEulerFoam/Pontalier_NM_1D_spherical}) but has not yet been run with the current aluminium model.
+    \item \emph{Trzci\'nski et al.} \cite{trzcinski2007}: RDX/wax with 15--60\% aluminium, LiF (inert) and TNT, 268\,g cylinders in a bunker, one side-on gauge at 2\,m; values only in figures. A secondary check, closest to the Comp-B/Al composition.
+    \item TNT equivalences of H-6 and similar aluminised compositions (compiled free-air data): an integral check of a Comp-B/Al-like model.
+\end{itemize}
+Well-controlled repeat shots of plastic explosives scatter by $\pm2.5$\% in arrival and $\pm6$--8\% in peak and impulse \cite{farrimond2024}. The difference between the laminar and the PaSR limit of the afterburning (1--2\% in peak, about 5\% in impulse at 0.3--0.5\,m in 1D, Section~\ref{sec:res_g3c}) is therefore below the scatter, and the data test the aluminium effect and the overall energy release rather than the mixing closure. Arrival times are the most robust measured quantity.
 
 \subsection{Test hierarchy and automation}
 
@@ -493,9 +536,12 @@ Three limitations of the current verification should be noted. First, the progra
     1 & \path{particleDrag_0D} & Slip relaxation with the Loth drag: 100\,$\mu$m at $Ma$ 1.7, 1\,$\mu$m at $Kn$ 0.33, vs an independent solution & Within 0.03\% of $U_0$ & Pass \\
     1 & \path{particleHeating_0D} & Heating with the Kavanau Nusselt number, without and with slip, vs an independent solution & $T_\text{Al}$ within 0.05\% & Pass \\
     1 & \path{alBurning_0D} & Beckstead burning of 1, 10, 50\,$\mu$m Al in air; no burning below $T_\text{ign}$ & Burn time within 0.23\% of the correlation, mass vs $(d/d_0)^3$ within 0.04\% & Pass \\
+    1 & \path{alBurningProducts_0D} & Beckstead burning to Al$_2$O$_3$ + H$_2$/CO with the gas oxidisers: oxidiser shares, stoichiometry, fuel-rich limit, solid/liquid oxide, extinction, ignited fraction; ignition delay (Kuhl--Boiko in the gas temperature; delay in the particle temperature during heating) & Burn time within 0.04\%; O$_2$ used 0.8897\,kg/kg Al (0.8895); ignition times $-0.20$\% and $+0.40$\%; mass $5\times10^{-9}$, energy $9\times10^{-7}$ of the heat released & Pass \\
     1 & High-T air & NASA-9 thermodynamics and O$_2$/N$_2$ dissociation equilibrium to 6000\,K & Agreement with tabulated data & Model \\
     1 & NASA-9 thermodynamics & Compiled \texttt{nasa9} thermo, 18 species and air, 200--25\,000\,K, against the source data & $\le 4.6\times10^{-6}$ (fitted condensed species and AlO: $\le 2.7\%$ vs source) & Pass \\
+    1 & Condensed species & C(gr) and Al$_2$O$_3$ as condensed species of the Abel--Nobel gas (no gas constant, $C_v = C_p$): species and mixture properties, isentropic expansion 100 $\to$ 0.1\,kg/m$^3$ & Properties within $4\times10^{-14}$; temperature on the isentrope within $5\times10^{-8}$ & Pass \\
     1 & Chemical equilibrium & Equilibrium at fixed $(e, \rho)$: air, products, products/air, 0.01--100\,kg/m$^3$, 2500--20\,000\,K, against \texttt{EuDetCode} and an independent solution & $T$, $p$ within $4\times10^{-4}$ of \texttt{EuDetCode} (its own tolerance), $10^{-6}$ of the independent solution & Pass \\
+    1 & Al/air equilibrium & Stoichiometric Al/air at fixed $(e, \rho)$ with Al$_2$O$_3$(L)/(s), sub-oxides and Al vapour (\texttt{blastFoam}) against an independent solution (SLSQP) & $T$ within $3\times10^{-8}$, $p$ within $6\times10^{-7}$ (4056\,K at 1.55\,kg/m$^3$) & Pass \\
     1 & Equilibrium gas chemistry & Equilibrium above $T_\text{eq}$ in the chemistry model: single cell (\texttt{blastFoam}) and 0D transfer (\texttt{blastEulerFoam}) & Composition, $T$, mass, elements, energy to round-off; energy incl.\ formation enthalpy $4\times10^{-7}$ & Pass \\
     1 & Gas mechanism & Reversible GRI-3.0 H$_2$/O$_2$/CO/C1 subset in a closed cell (\texttt{blastFoam}) vs full GRI-3.0 (Cantera): product/air mixtures, 1200--2000\,K, 1--50\,bar & Ignition times within 0.94--1.13; final $T$ within 0.8\% & Pass \\
     1 & \path{pressurePhaseChangeTest} & 1D transfer with species allocation (\texttt{blastFoam}) & Runs to completion & Pass \\
@@ -506,6 +552,7 @@ Three limitations of the current verification should be noted. First, the progra
     2 & \path{gunib1d_houim1-3} & Granular shock problems against \texttt{gunIB1D} & Within 1.2\% (shock speed), 0.6\% (peak pressure) & Pass \\
     2 & \path{planar_znd} & Planar Comp-B detonation: front position, CJ state, Taylor wave & Front at the programmed-burn position; CJ point of the products EOS at the burn speed (0.000\%); front pressure 22.8--24.9\,GPa ($p_\text{CJ}$ 24.7\,GPa) & Pass \\
     2 & \path{planar_znd_phaseTransfer} & Transfer behind a planar detonation & Smooth conversion below 100\,bar & Pass \\
+    2 & \path{turbulentMixingDiffusion} & Subgrid mixing model (Section~\ref{sec:mixing_model}) in a closed planar tube: error-function solution, conservation, mixing-layer mask, species list, unity Lewis number & $Y_\text{CO}$ within $6\times10^{-4}$ of erfc; mass and energy to $2\times10^{-12}$; pressure uniform within 0.5\,Pa; no diffusion outside the layer ($2\times10^{-5}$); list without N$_2$ rejected & Pass \\
     \midrule
     3 & \path{spherical_blast} & 1\,kg C4 (\texttt{blastFoam}) against Kinney--Graham (TNT) & Peak overpressure 9--20\% low; impulse 1--32\% & Pass\textsuperscript{a} \\
     3 & \path{tnt_blast}, \path{compB_blast} & 1\,kg TNT and Comp-B (\texttt{blastFoam}, 4\,mm) against Kingery--Bulmash; mesh study to 1\,mm & 4\,mm: overpressure 5--15\% (TNT) and 2--10\% (Comp-B) low for $Z \ge 1$; 1\,mm TNT within 3.4\% for $Z \ge 4$; impulse 14--17\% (TNT), 5--9\% (Comp-B) low & Pass\textsuperscript{a} \\
@@ -949,6 +996,9 @@ The following \texttt{blastFoam} tutorials \up{} cover phenomena relevant to the
     \bibitem{fedina2014} E. Fedina, \emph{TNT/Aluminium Afterburning in Air Blasts}, FOI-R--3913--SE, Swedish Defence Research Agency (FOI), 2014.
     \bibitem{fedina2017} K. Fedina, \emph{Post-Detonation Afterburning of High Explosives}, PhD thesis, Department of Energy Sciences, Lund University, 2017.
     \bibitem{balakrishnan2010} K. Balakrishnan, F. Genin, D. V. Nance and S. Menon, Numerical study of blast characteristics from detonation of homogeneous explosives, \emph{Shock Waves} 20 (2010) 147--162, doi:10.1007/s00193-009-0236-4.
+    \bibitem{pontalier2021} Q. Pontalier, J. Loiseau, S. Goroshin, F. Zhang and D. L. Frost, Blast enhancement from metalized explosives, \emph{Shock Waves} 31 (2021) 203--230, doi:10.1007/s00193-021-00994-z.
+    \bibitem{trzcinski2007} W. A. Trzci\'nski, S. Cudzi\l{}o and J. Paszula, Studies of free field and confined explosions of aluminium enriched RDX compositions, \emph{Propellants Explos. Pyrotech.} 32 (2007) 502--508, doi:10.1002/prep.200700202.
+    \bibitem{farrimond2024} D. G. Farrimond et al., Far-field positive phase blast parameter characterisation of RDX and PETN based explosives, \emph{Int. J. Prot. Struct.} (2023/2024).
 \end{thebibliography}
 
 \end{document}

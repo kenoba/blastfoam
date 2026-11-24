@@ -137,11 +137,20 @@ def load_eudet(path):
 
 def load_cantera(paths):
     import yaml
+
+    # YAML 1.1 reads the species name NO as the boolean false: load without
+    # the boolean resolver, so that names stay strings
+    class Loader(yaml.SafeLoader):
+        pass
+    Loader.yaml_implicit_resolvers = {
+        k: [r for r in v if r[0] != "tag:yaml.org,2002:bool"]
+        for k, v in yaml.SafeLoader.yaml_implicit_resolvers.items()}
+
     out = {}
     for p in paths:
         if p and os.path.isfile(p):
-            for sp in yaml.safe_load(open(p))["species"]:
-                out[sp["name"]] = sp
+            for sp in yaml.load(open(p), Loader=Loader)["species"]:
+                out[str(sp["name"])] = sp
     return out
 
 
