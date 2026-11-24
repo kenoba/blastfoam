@@ -9,6 +9,7 @@ afterwards D decays as (tau1/tau)^late.
 
 usage: setup_mix.py --out DIR --C 0.01 [--shot 4] [--endTime 3e-3] [--R 4] [--np 1]
                     [--tau1 0.9] [--late 1] [--energy yes|no]
+                    [--Tign 933] [--tauIgn 5e-4] [--alphaMin 1e-9] (Al ignition, setup_foi2013.py)
 
 The width scaling uses the total charge mass (with the Al of the TNT/Al
 shots); the products tracer fraction YProducts is the N2 fraction of the
@@ -35,10 +36,14 @@ ap.add_argument("--tau1", type=float, default=0.9)
 ap.add_argument("--late", type=float, default=1.0)
 ap.add_argument("--energy", default="yes")
 ap.add_argument("--zMin", type=float, default=1e-3)
+ap.add_argument("--Tign", default="933")
+ap.add_argument("--tauIgn", default="5e-4")
+ap.add_argument("--alphaMin", default="1e-9")
 a = ap.parse_args()
 
 subprocess.run([sys.executable, os.path.join(TUT, "setup_foi2013.py"), "--shot", a.shot,
-                "--out", a.out, "--R", str(a.R), "--endTime", str(a.endTime), "--np", a.np], check=True)
+                "--out", a.out, "--R", str(a.R), "--endTime", str(a.endTime), "--np", a.np,
+                "--Tign", a.Tign, "--tauIgn", a.tauIgn, "--alphaMin", a.alphaMin], check=True)
 
 info = open(os.path.join(a.out, "charge.txt")).read().split()
 W = float(info[info.index("m_total") + 1])

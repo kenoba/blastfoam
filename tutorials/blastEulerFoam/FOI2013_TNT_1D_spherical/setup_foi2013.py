@@ -7,6 +7,7 @@ case with the ground.
 
     python3 setup_foi2013.py --shot 4 --out <case dir>
         [--closure laminar|pasrd] [--R 4.0] [--endTime 4e-3] [--np 1]
+        [--Tign 933] [--tauIgn 5e-4] [--alphaMin 1e-9]
 
 Built with build_case() of ../Pontalier_NM_1D_spherical/setup_pontalier.py
 (the 2 m Comp-B/Al tutorial with the Phase D Al models, products -> gas
@@ -15,6 +16,10 @@ fit utilities/thermo_fitter/eudet_foi2013/shot<N> (foi2013_charges.py),
 the reactants Murnaghan with the EuDetCode TNT data (K0 8.93 GPa, n 5.5).
 Extra probes at the slant distances of the ground gauges P1-P3 (2, 4, 6 m
 from the point below the charge).
+Al ignition (calibrated on shots 4/5 in 2D, report Section 9.11): Tign
+933 K with an ignition delay tauIgn 0.5 ms, burning down to alphaMin 1e-9
+(residualAlpha and the drag cut-offs stay at 1e-6); --tauIgn 0 --Tign 2050
+--alphaMin 1e-6 give the earlier settings.
 """
 
 import argparse
@@ -51,6 +56,23 @@ def parallel(out, n):
     open(ar, "w").write(s)
 
 
+def al_ignition(out, Tign, tauIgn, alphaMin):
+    """Set the Al ignition temperature, delay and burning cut-off."""
+    pp = os.path.join(out, "constant", "phaseProperties")
+    s = open(pp).read()
+    s, n1 = re.subn(r"(\n        Tign\s+)[^;]+;", rf"\g<1>{Tign:g};", s, count=1)
+    new = ("        // Burn down to dilute clouds (residualAlpha and the drag cut-offs\n"
+           "        // stay at 1e-6; 1e-9 there is unstable)\n"
+           f"        alphaMin        {alphaMin:g};\n")
+    if tauIgn > 0:
+        new = ("        // Ignition after tauIgn at or above Tign\n"
+               f"        tauIgn          {tauIgn:g};\n" + new)
+    s, n2 = re.subn(r"(        //[^\n]*\n)?        alphaMin\s+[^;]+;\n", new, s, count=1)
+    if n1 != 1 or n2 != 1:
+        sys.exit(f"{pp}: Tign/alphaMin entries not found")
+    open(pp, "w").write(s)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--shot", required=True, choices=list(fc.SHOTS))
@@ -60,6 +82,9 @@ def main():
     ap.add_argument("--endTime", type=float, default=4e-3)
     ap.add_argument("--np", type=int, default=1,
                     help="processes (simple decomposition along the radius)")
+    ap.add_argument("--Tign", type=float, default=933.0, help="Al ignition temperature [K]")
+    ap.add_argument("--tauIgn", type=float, default=5e-4, help="Al ignition delay [s] (0: none)")
+    ap.add_argument("--alphaMin", type=float, default=1e-9, help="Al burning cut-off")
     a = ap.parse_args()
     eudet = os.path.join(BLAST, "utilities/thermo_fitter/eudet_foi2013", f"shot{a.shot}")
     if not os.path.isfile(os.path.join(eudet, "cj_output.txt")):
@@ -72,6 +97,7 @@ def main():
     build_case(a.out, eudet, c, label, closure=a.closure, R=a.R, endTime=a.endTime,
                K0=8.93e9, n_murnaghan=5.5, probes=probes,
                info=f"shot {a.shot} hob {c['hob']:g}")
+    al_ignition(a.out, a.Tign, a.tauIgn, a.alphaMin)
     if a.np > 1:
         parallel(a.out, a.np)
     print(f"ground gauges P1-P3 at slant distances {slant} m"
