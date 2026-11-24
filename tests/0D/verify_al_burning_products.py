@@ -34,6 +34,14 @@ Single cell, gas and particles at rest at the same temperature. Cases:
    (constant heat transfer coefficient): ignited.Al stays zero and the
    particles do not burn until their temperature reaches Tign (2000 K);
    afterwards ignited.Al is one and they burn.
+8. Kuhl-Boiko ignition delay in the gas temperature (TIgnDelay T.gas,
+   Tign 0, tauIgn 2.5e-11 s, TaIgn 30000 K, nIgn 2, dRefIgn 4 um): at a
+   constant 2500 K the particles start burning after
+   tau = 2.5e-11 exp(30000/2500) (10/4)^2 s = 25.4 us (within 2%).
+9. Delay in the particle temperature while heating from 1500 K (Tign
+   1800 K, tauIgn 1e-12 s, TaIgn 30000 K): burning starts where the
+   integral of exp(-TaIgn/T_Al)/tauIgn over the time above Tign, from the
+   computed T_Al history, reaches one (within 2%).
 All cases: total mass to 1e-8 and total energy (phase energies plus the
 formation enthalpy of the gas species) to 1e-5 of the heat released.
 """
@@ -68,7 +76,7 @@ YIELD = {"O2": {"O2": -3*W["O2"]/(4*W_AL["O2"]), "Al2O3": 2*W["Al2O3(s)"]/(4*W_A
                  "CO": 3*W["CO"]/(2*W_AL["CO2"])}}
 # columns of postProcessing/state (volAverage over the single cell)
 COLS = ["t", "d", "alpha", "TAl", "Tgas", "p", "aRhoAl", "aRhoGas", "aRhoEAl", "aRhoEGas",
-        "aRhoPTE"] + SPECIES + ["ignited"]
+        "aRhoPTE"] + SPECIES + ["ignited", "progress"]
 
 
 def env(cmd):
@@ -88,7 +96,8 @@ def burn_time(d0, Y, T):
     return 1e-3*A*(d0*1e6)**N/(Xeff*(P0/101325.0)**0.1*T**0.2)
 
 
-def run_case(name, d0, T, alpha, Y, Tign, Text, dt, t_end, Tp=None, Kh=0.0, ignited=False):
+def run_case(name, d0, T, alpha, Y, Tign, Text, dt, t_end, Tp=None, Kh=0.0, ignited=False,
+             delay=""):
     case = os.path.join(WORK, name)
     if os.path.isdir(case):
         shutil.rmtree(case)
@@ -96,7 +105,7 @@ def run_case(name, d0, T, alpha, Y, Tign, Text, dt, t_end, Tp=None, Kh=0.0, igni
     ystr = ",".join(f"{k}={v!r}" for k, v in Y.items())
     r = subprocess.run(["bash", "-c", env(
         f"./Allrun {d0!r} {P0!r} {T!r} {alpha!r} {dt!r} {t_end!r} {ystr} {Tign!r} {Text!r} "
-        f"{Tp if Tp is not None else T!r} {Kh!r} {'true' if ignited else 'false'}")],
+        f"{Tp if Tp is not None else T!r} {Kh!r} {'true' if ignited else 'false'} '{delay}'")],
         capture_output=True, text=True, cwd=case)
     logf = os.path.join(case, "log.blastEulerFoam")
     log = open(logf).read() if os.path.exists(logf) else ""
@@ -265,6 +274,35 @@ def main():
         print("FAIL: heating: burning before ignition or not after")
         ok = False
     ok &= conservation("heating", case, s)
+
+    # 8. Kuhl-Boiko delay in the gas temperature, scaled with d^2
+    tau = 2.5e-11*np.exp(30000.0/T)*(d0/4e-6)**2
+    case, s = run_case("delayGas", d0, T, 1e-7, air, 0.0, 0.0, tb/4000, 0.2*tb, ignited=True,
+                       delay="tauIgn=2.5e-11,TaIgn=30000,nIgn=2,dRefIgn=4e-6,TIgnDelay=T.gas")
+    i_burn = np.argmax(s["d"] < (1 - 1e-9)*d0)
+    err = s["t"][i_burn]/tau - 1
+    print(f"8. Kuhl-Boiko delay at {T:.0f} K (gas): burning starts at {s['t'][i_burn]*1e6:.2f} us "
+          f"(tau {tau*1e6:.2f} us, {100*err:+.2f}%), ignited before {s['ignited'][:i_burn].max():.1f}")
+    if abs(err) > 0.02 or s["ignited"][:i_burn].max() > 0 or s["d"][-1] >= d0:
+        print("FAIL: delayGas: ignition time")
+        ok = False
+
+    # 9. delay in the particle temperature while heating
+    case, s = run_case("delayHeating", d0, T, 1e-7, air, 1800.0, 0.0, tb/4000, 0.3*tb,
+                       Tp=1500.0, Kh=Kh, ignited=True, delay="tauIgn=1e-12,TaIgn=30000")
+    rate = np.where(s["TAl"] >= 1800.0, np.exp(-30000.0/s["TAl"])/1e-12, 0.0)
+    prog = np.concatenate(([0.0], np.cumsum(0.5*(rate[1:] + rate[:-1])*np.diff(s["t"]))))
+    t_ref = np.interp(1.0, prog, s["t"])
+    i_burn = np.argmax(s["d"] < (1 - 1e-9)*d0)
+    err = s["t"][i_burn]/t_ref - 1
+    i_T = np.argmax(s["TAl"] >= 1800.0)
+    print(f"9. delay in T_Al: T_Al reaches 1800 K at {s['t'][i_T]*1e6:.2f} us, ignition from the "
+          f"T_Al history at {t_ref*1e6:.2f} us, burning starts at {s['t'][i_burn]*1e6:.2f} us "
+          f"({100*err:+.2f}%), progress before {s['progress'][:i_burn].max():.3f}")
+    if abs(err) > 0.02 or s["ignited"][:i_burn].max() > 0 or s["d"][-1] >= d0:
+        print("FAIL: delayHeating: ignition time")
+        ok = False
+    ok &= conservation("delayHeating", case, s)
 
     print("SUCCESS: Al burns to oxide with the gas oxidisers" if ok else "FAILURE")
     return 0 if ok else 1

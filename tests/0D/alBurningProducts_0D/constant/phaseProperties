@@ -35,6 +35,8 @@ Al
         // Track the ignited fraction of the particles (true) or keep
         // burning where d < d0 (false)
         ignitedFraction IGNITEDFRACTION;
+        // Ignition delay (tauIgn, TaIgn, nIgn, dRefIgn, TIgnDelay; none: at Tign)
+        IGNDELAY
         // The dilute cloud must not be reset to d0
         alphaMin        1e-12;
     }

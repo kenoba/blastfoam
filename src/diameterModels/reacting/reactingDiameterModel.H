@@ -56,10 +56,28 @@ Description
     one. This delays the ignition of particles heated in the early detonation
     products to the time they are in the fireball.
 
+    The delay may depend on a temperature T' and on the particle diameter,
+
+        tau = tauIgn exp(TaIgn/T') (d/dRefIgn)^nIgn,
+
+    with T' the particle temperature or the field TIgnDelay. With
+    TIgnDelay T.gas, Tign 0, tauIgn 2.5e-11 s and TaIgn 30000 K this is the
+    ignition model of Kuhl and Boiko (LLNL-CONF-427973, 2010; Balakrishnan
+    et al., Shock Waves 22, 2012), a fit to shock-tube delays of 3-5 um Al
+    spheres at 1670-2170 K (0.43 ms at 1800 K); nIgn 2 with dRefIgn 4e-6
+    scales it to other sizes (the heating time scales as d^2, a thermal
+    explosion model gives d^2.3). That delay includes the heating of the
+    particles, which the model resolves, so with the particle temperature
+    T' and Tign near the melting point it counts twice.
+
     \verbatim
         ignitedFraction true;       // optional, default false
         Tign            2050;       // ignition temperature [K]
         tauIgn          5e-4;       // optional ignition delay [s], default 0
+        TaIgn           0;          // optional activation temperature [K]
+        nIgn            0;          // optional diameter exponent
+        dRefIgn         4e-6;       // reference diameter [m] (nIgn != 0)
+        TIgnDelay       T.gas;      // optional, default the particle T
     \endverbatim
 
 SourceFiles
@@ -119,7 +137,20 @@ class reactingDiameterModel
     const scalar Tign_;
 
     //- Ignition delay: time at or above Tign before ignition [s]
+    //  (pre-exponential factor with TaIgn)
     const scalar tauIgn_;
+
+    //- Activation temperature of the ignition delay [K]
+    const scalar TaIgn_;
+
+    //- Diameter exponent of the ignition delay
+    const scalar nIgn_;
+
+    //- Reference diameter of the ignition delay [m]
+    const scalar dRefIgn_;
+
+    //- Temperature field of the ignition delay
+    const word TIgnDelayName_;
 
     //- Number density
     volScalarField N_;

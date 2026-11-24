@@ -5,6 +5,7 @@ gas at rest at the same temperature.
     python3 setup_case.py --d 1e-5 --p 101325 --T 2500 --alpha 1e-7 \
         --deltaT 1e-7 --endTime 1e-3 --Y O2=0.2331,N2=0.7669 \
         --Tign 2000 --Textinction 0 [--Tp 1500] [--Kh 0] [--ignitedFraction false]
+        [--ignDelay tauIgn=2.5e-11,TaIgn=30000,TIgnDelay=T.gas]
 """
 
 import argparse
@@ -20,6 +21,8 @@ a.add_argument("--Y", required=True)
 a.add_argument("--Tp", type=float, default=None, help="particle temperature (default T)")
 a.add_argument("--Kh", type=float, default=0.0, help="heat transfer coefficient [W/m3/K]")
 a.add_argument("--ignitedFraction", default="false")
+a.add_argument("--ignDelay", default="",
+               help="ignition delay entries, e.g. tauIgn=1e-4,TaIgn=0")
 a = a.parse_args()
 
 # Air (mass fractions) as an Abel-Nobel gas with the co-volumes of
@@ -78,7 +81,10 @@ for f, key, val in (("constant/phaseProperties", "D_PARTICLE", a.d),
                     ("constant/phaseProperties", "TIGN", a.Tign),
                     ("constant/phaseProperties", "TEXTINCTION", a.Textinction),
                     ("constant/phaseProperties", "KH", a.Kh),
-                    ("constant/phaseProperties", "IGNITEDFRACTION", a.ignitedFraction)):
+                    ("constant/phaseProperties", "IGNITEDFRACTION", a.ignitedFraction),
+                    ("constant/phaseProperties", "IGNDELAY",
+                     " ".join(f"{k} {v};" for k, v in
+                              (kv.split("=") for kv in a.ignDelay.split(",") if kv)))):
     path = os.path.join(CASE, f)
     text = open(path).read()
     open(path, "w").write(text.replace(key, val if isinstance(val, str) else repr(val)))

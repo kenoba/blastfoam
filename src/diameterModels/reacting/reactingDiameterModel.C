@@ -71,6 +71,13 @@ Foam::diameterModels::reactingDiameterModel::reactingDiameterModel
     (
         ignitedFraction_ ? dict.lookupOrDefault<scalar>("tauIgn", 0) : 0
     ),
+    TaIgn_(dict.lookupOrDefault<scalar>("TaIgn", 0)),
+    nIgn_(dict.lookupOrDefault<scalar>("nIgn", 0)),
+    dRefIgn_
+    (
+        nIgn_ != 0 ? dict.lookup<scalar>("dRefIgn") : 1.0
+    ),
+    TIgnDelayName_(dict.lookupOrDefault("TIgnDelay", TName_)),
     N_
     (
         IOobject
@@ -140,6 +147,11 @@ Foam::diameterModels::reactingDiameterModel::reactingDiameterModel
     {
         FatalIOErrorInFunction(dict)
             << "tauIgn must not be negative" << exit(FatalIOError);
+    }
+    if (dRefIgn_ <= 0)
+    {
+        FatalIOErrorInFunction(dict)
+            << "dRefIgn must be positive" << exit(FatalIOError);
     }
     this->requireD();
 }
@@ -325,13 +337,49 @@ void Foam::diameterModels::reactingDiameterModel::solve
         const bool delay = tauIgn_ > 0;
         if (delay)
         {
+            // Rate 1/tau where the particles are at or above Tign, with
+            // tau = tauIgn exp(TaIgn/T') (d/dRefIgn)^nIgn and T' the
+            // particle temperature or the field TIgnDelay (e.g. the gas
+            // temperature, as in the Kuhl-Boiko model); written as
+            // exp(-TaIgn/T')/... so that it does not overflow at low T'
+            const volScalarField& Tdelay =
+                TIgnDelayName_ == T.name()
+              ? T
+              : this->d_.mesh().template lookupObject<volScalarField>
+                (
+                    TIgnDelayName_
+                );
+            volScalarField rate
+            (
+                volScalarField::New
+                (
+                    IOobject::groupName("ignitionRate", this->d_.group()),
+                    this->d_.mesh(),
+                    dimensionedScalar(inv(dimTime), 0)
+                )
+            );
+            forAll(rate, celli)
+            {
+                if (T[celli] >= Tign_)
+                {
+                    rate[celli] =
+                        Foam::exp(-TaIgn_/Foam::max(Tdelay[celli], 1.0))
+                       /(
+                            tauIgn_
+                           *Foam::pow
+                            (
+                                Foam::max(this->d_[celli], 1e-10)/dRefIgn_,
+                                nIgn_
+                            )
+                        );
+                }
+            }
             volScalarField deltaProgress
             (
                 IOobject::groupName("ignitionProgressDelta", this->d_.group()),
                 fvc::div(phi, ignitionProgress_, divScheme)
               - ignitionProgress_*fvc::div(phi)
-              - pos0(T - dimensionedScalar(dimTemperature, Tign_))
-               /dimensionedScalar(dimTime, tauIgn_)
+              - rate
             );
             this->storeAndBlendOld(ignitionProgress_);
             this->storeAndBlendDelta(deltaProgress);
