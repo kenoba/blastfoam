@@ -41,6 +41,7 @@ swarmCorrections/swarmCorrection/swarmCorrection.C
 swarmCorrections/swarmCorrection/swarmCorrectionNew.C
 swarmCorrections/noSwarmCorrection/noSwarmCorrection.C
 swarmCorrections/Tomiyama/TomiyamaSwarmCorrection.C
+swarmCorrections/constant/constantSwarmCorrection.C
 
 liftModels/liftModel/liftModel.C
 liftModels/liftModel/liftModelNew.C

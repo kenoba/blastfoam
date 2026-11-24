@@ -39,9 +39,11 @@ MU_GAS = 1.81e-5
 RHO0_AL, K0_AL, N_AL, PREF_AL = 2700.0, 72.7e9, 4.3, 101325.0
 
 RUNS = (
-    # name, d, p, T, U0, alpha, deltaT, endTime
-    ("compression", 1e-4, 1e5, 300.0, 600.0, 1e-6, 1e-7, 2e-3),
-    ("rarefaction", 1e-6, 2e4, 300.0, 400.0, 1e-6, 2e-9, 4e-5),
+    # name, d, p, T, U0, alpha, deltaT, endTime, drag multiplier Cs
+    ("compression", 1e-4, 1e5, 300.0, 600.0, 1e-6, 1e-7, 2e-3, 1.0),
+    ("rarefaction", 1e-6, 2e4, 300.0, 400.0, 1e-6, 2e-9, 4e-5, 1.0),
+    # constant swarm correction (drag times Cs)
+    ("compression_Cs3", 1e-4, 1e5, 300.0, 600.0, 1e-6, 1e-7, 2e-3, 3.0),
 )
 
 
@@ -90,11 +92,19 @@ def env(cmd):
             "source $BLAST_DIR/etc/bashrc >/dev/null 2>&1 && " + cmd)
 
 
-def run_case(name, d, p, T, U0, alpha, dt, t_end):
+def run_case(name, d, p, T, U0, alpha, dt, t_end, Cs=1.0):
     case = os.path.join(WORK, name)
     if os.path.isdir(case):
         shutil.rmtree(case)
     shutil.copytree(CASE, case)
+    if Cs != 1.0:
+        pp = os.path.join(case, "constant", "phaseProperties")
+        txt = open(pp).read()
+        old = "        swarmCorrection\n        {\n            type            none;\n        }"
+        if txt.count(old) != 1:
+            sys.exit(f"FAIL: {name}: swarmCorrection entry not found")
+        open(pp, "w").write(txt.replace(old, "        swarmCorrection\n        {\n"
+                                        f"            type            constant;\n            Cs              {Cs!r};\n        }}"))
     r = subprocess.run(["bash", "-c", env(f"./Allrun {d!r} {p!r} {T!r} {U0!r} {alpha!r} {dt!r} {t_end!r}")],
                        capture_output=True, text=True, cwd=case)
     logf = os.path.join(case, "log.blastEulerFoam")
@@ -109,7 +119,7 @@ def run_case(name, d, p, T, U0, alpha, dt, t_end):
     return data[:, 0], data[:, 1], data[:, 4], data[:, 8]
 
 
-def reference(d, p, T, U0, alpha, t_end, n=40000):
+def reference(d, p, T, U0, alpha, t_end, Cs=1.0, n=40000):
     rho_g = p/((GAMMA - 1.0)*CV_GAS*T)
     rho_p = RHO0_AL*(1.0 + N_AL*(p - PREF_AL)/K0_AL)**(1.0/N_AL)
     nu = MU_GAS/rho_g
@@ -119,7 +129,7 @@ def reference(d, p, T, U0, alpha, t_end, n=40000):
     def rhs(y):
         ur = y[0] - y[1]
         Re = max(abs(ur)*d/nu, 1e-12)
-        K = alpha*0.75*loth_cd(Re, abs(ur)/c)*Re*rho_g*nu/d**2
+        K = Cs*alpha*0.75*loth_cd(Re, abs(ur)/c)*Re*rho_g*nu/d**2
         return np.array([-K*ur/m_p, K*ur/m_g])
 
     y = np.array([U0, 0.0])
@@ -147,14 +157,14 @@ def main():
         ok = False
 
     os.makedirs(WORK, exist_ok=True)
-    for name, d, p, T, U0, alpha, dt, t_end in RUNS:
-        t, Up, Ug, Tg = run_case(name, d, p, T, U0, alpha, dt, t_end)
-        t_ref, ur_ref, Re0, Ma0, Kn0 = reference(d, p, T, U0, alpha, t_end)
+    for name, d, p, T, U0, alpha, dt, t_end, Cs in RUNS:
+        t, Up, Ug, Tg = run_case(name, d, p, T, U0, alpha, dt, t_end, Cs)
+        t_ref, ur_ref, Re0, Ma0, Kn0 = reference(d, p, T, U0, alpha, t_end, Cs)
         ur = Up - Ug
         err = np.max(np.abs(ur - np.interp(t, t_ref, ur_ref)))/U0
         half = t[np.argmax(ur <= 0.5*U0)] if (ur <= 0.5*U0).any() else float("nan")
         half_ref = t_ref[np.argmax(ur_ref <= 0.5*U0)]
-        print(f"{name}: d {d*1e6:g} um, p {p/1e5:g} bar, Re0 {Re0:.1f}, Ma0 {Ma0:.2f}, Kn0 {Kn0:.3g}")
+        print(f"{name}: d {d*1e6:g} um, p {p/1e5:g} bar, Re0 {Re0:.1f}, Ma0 {Ma0:.2f}, Kn0 {Kn0:.3g}, Cs {Cs:g}")
         print(f"  slip halved at {half*1e6:.3f} us (reference {half_ref*1e6:.3f} us), "
               f"final slip {ur[-1]:.3f} m/s (reference {ur_ref[-1]:.3f}), "
               f"max deviation {100*err:.3f}% of U0, gas T change {Tg[-1] - Tg[0]:+.3f} K")
