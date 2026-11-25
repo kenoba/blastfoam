@@ -25,6 +25,9 @@ License
 
 #include "phaseFluxScheme.H"
 #include "ReconstructionScheme.H"
+#include "wallFvPatch.H"
+#include "symmetryPlaneFvPatch.H"
+#include "symmetryFvPatch.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -54,6 +57,7 @@ Foam::phaseFluxScheme::phaseFluxScheme
         ).subDict(phaseName_)
     ),
     residualAlpha_(residualAlpha),
+    reflectingWalls_(dict_.lookupOrDefault<Switch>("reflectingWalls", false)),
     alphaTrace_(0),
     rhoMix_(nullptr),
     cMix_(nullptr),
@@ -259,6 +263,64 @@ void Foam::phaseFluxScheme::setPatchMixture(const label patchi)
 }
 
 
+bool Foam::phaseFluxScheme::reflectingPatch(const label patchi) const
+{
+    if (!reflectingWalls_)
+    {
+        return false;
+    }
+    const fvPatch& patch = mesh_.boundary()[patchi];
+    return
+        !patch.coupled()
+     && (
+            isA<wallFvPatch>(patch)
+         || isA<symmetryPlaneFvPatch>(patch)
+         || isA<symmetryFvPatch>(patch)
+        );
+}
+
+
+void Foam::phaseFluxScheme::reflectingFlux
+(
+    const scalar alpha,
+    const scalar rho,
+    const vector& U,
+    const scalar p,
+    const scalar c,
+    const vector& Sf,
+    scalar& phi,
+    scalar& alphaRhoPhi,
+    vector& alphaRhoUPhi,
+    scalar& alphaRhoEPhi,
+    const label facei,
+    const label patchi
+)
+{
+    const scalar magSf = mag(Sf);
+    const vector normal = Sf/magSf;
+    const scalar phiMesh = meshPhi(facei, patchi);
+
+    // Normal velocity of the cell state relative to the (moving) boundary,
+    // positive into the boundary
+    const scalar un = (U & normal) - phiMesh/magSf;
+
+    // HLLC star pressure between the state and its mirror image (SStar = 0,
+    // SOwn = -|un| - c): elastic reflection, 2 rho un^2 for a pressureless
+    // stream; a receding state (un < 0) gives the linearised rarefaction,
+    // bounded by vacuum
+    const scalar pStar = max(p + rho*un*(mag(un) + c + un), 0.0);
+
+    phi = 0;
+    alphaRhoPhi = 0;
+    alphaRhoUPhi = alpha*pStar*Sf;
+    alphaRhoEPhi = phiMesh*alpha*pStar;
+
+    this->save(facei, patchi, U - un*normal, Uf_);
+    this->save(facei, patchi, pStar, pf_);
+    this->save(facei, patchi, alpha, alphaf_);
+}
+
+
 void Foam::phaseFluxScheme::update
 (
     const volScalarField& alpha,
@@ -398,6 +460,40 @@ void Foam::phaseFluxScheme::update
 
     forAll(U.boundaryField(), patchi)
     {
+        if (reflectingPatch(patchi))
+        {
+            const fvPatchVectorField& Up = U.boundaryField()[patchi];
+            const vectorField Uc(Up.patchInternalField());
+            const labelUList& faceCells = Up.patch().faceCells();
+            forAll(Up, facei)
+            {
+                const label celli = faceCells[facei];
+                if (alpha[celli] < residualAlpha_)
+                {
+                    phi.boundaryFieldRef()[patchi][facei] = Zero;
+                    alphaRhoPhi.boundaryFieldRef()[patchi][facei] = Zero;
+                    alphaRhoUPhi.boundaryFieldRef()[patchi][facei] = Zero;
+                    alphaRhoEPhi.boundaryFieldRef()[patchi][facei] = Zero;
+                    continue;
+                }
+                reflectingFlux
+                (
+                    alpha[celli],
+                    rho[celli],
+                    Uc[facei],
+                    p[celli],
+                    c[celli],
+                    mesh_.Sf().boundaryField()[patchi][facei],
+                    phi.boundaryFieldRef()[patchi][facei],
+                    alphaRhoPhi.boundaryFieldRef()[patchi][facei],
+                    alphaRhoUPhi.boundaryFieldRef()[patchi][facei],
+                    alphaRhoEPhi.boundaryFieldRef()[patchi][facei],
+                    facei, patchi
+                );
+            }
+            continue;
+        }
+
         setPatchMixture(patchi);
         forAll(U.boundaryField()[patchi], facei)
         {

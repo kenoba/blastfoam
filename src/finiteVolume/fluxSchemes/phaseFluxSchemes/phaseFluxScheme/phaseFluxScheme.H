@@ -79,6 +79,14 @@ protected:
     //- Residual alpha value
     const scalar residualAlpha_;
 
+    //- Reflect the phase at wall and symmetry patches (mirror state):
+    //  zero mass and energy flux, momentum flux from the HLLC star
+    //  pressure of the cell state against its mirror image, with the
+    //  phase's own impedance. Without it the boundary flux takes the
+    //  patch values on both sides (zero normal velocity), so a stream
+    //  with little pressure (dilute granular phase) meets no reaction.
+    const Switch reflectingWalls_;
+
     //- Saved interpolated alpha field
     tmp<surfaceScalarField> alphaf_;
 
@@ -154,6 +162,26 @@ protected:
         //- Set the mixture state of the current face (after
         //  setPatchMixture for a boundary face)
         void setFaceMixture(const label facei, const label patchi = -1);
+
+        //- Is the patch reflecting for this phase
+        bool reflectingPatch(const label patchi) const;
+
+        //- Flux at a reflecting boundary face from the cell state
+        void reflectingFlux
+        (
+            const scalar alpha,
+            const scalar rho,
+            const vector& U,
+            const scalar p,
+            const scalar c,
+            const vector& Sf,
+            scalar& phi,
+            scalar& alphaRhoPhi,
+            vector& alphaRhoUPhi,
+            scalar& alphaRhoEPhi,
+            const label facei,
+            const label patchi
+        );
 
         //- Correct fluxes
         virtual void postUpdate()
