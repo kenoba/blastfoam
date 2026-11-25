@@ -667,7 +667,7 @@ bool Foam::fvMeshDistributors::redistributor::update()
         bool allSame = min(distribution) == max(distribution);
         if (returnReduce(allSame, andOp<bool>()))
         {
-            DebugInfo<< "Distribution does not change. Skipping" << endl;
+            Info<< "    Not balancing: the distribution does not change" << endl;
             return false;
         }
 
@@ -680,8 +680,8 @@ bool Foam::fvMeshDistributors::redistributor::update()
         reduce(procLoadNew, sumOp<labelList>());
         if (maxImbalance_ >= 0 && min(procLoadNew) == 0)
         {
-            DebugInfo
-                << "New distribution results in a load of 0. Skipping" << endl;
+            Info<< "    Not balancing: the new distribution leaves a processor"
+                << " without cells. Skipping" << endl;
             return false;
         }
         scalar averageLoadNew
@@ -690,7 +690,7 @@ bool Foam::fvMeshDistributors::redistributor::update()
         );
         scalar maxDevNew(max(mag(procLoadNew - averageLoadNew))/averageLoadNew);
 
-        if (maxImbalance_ >= 0 && maxDevNew > maxImbalance_*0.99)
+        if (maxImbalance_ >= 0 && maxDevNew > globalImbalance*0.99)
         {
             Info
                 << "    Not balancing because the new distribution does" << nl
@@ -765,8 +765,9 @@ Foam::fvMeshDistributors::redistributor::forceUpdate(const bool dist)
     reduce(procLoadNew, sumOp<labelList>());
     if (maxImbalance_ >= 0 && min(procLoadNew) == 0)
     {
-        DebugInfo
-            << "New distribtion results in a load of 0. Skipping" << endl;
+        Info
+            << "    Not balancing: the new distribution leaves a processor"
+            << " without cells. Skipping" << endl;
         return autoPtr<polyDistributionMap>();
     }
     scalar averageLoadNew
@@ -775,12 +776,12 @@ Foam::fvMeshDistributors::redistributor::forceUpdate(const bool dist)
     );
     scalar maxDevNew(max(mag(procLoadNew - averageLoadNew))/averageLoadNew);
 
-    if (maxImbalance_ >= 0 && maxDevNew > maxImbalance_*0.99)
+    if (maxImbalance_ >= 0 && maxDevNew > globalImbalance*0.99)
     {
         Info
             << "    Not balancing because the new distribution does" << nl
             << "    not improve the load. Skipping" << nl
-            << "    old imbalance: " << maxImbalance_ << nl
+            << "    old imbalance: " << globalImbalance << nl
             << "    new imbalance: " << maxDevNew << nl
             << endl;
         return autoPtr<polyDistributionMap>();
