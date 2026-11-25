@@ -191,6 +191,12 @@ public:
     // Member Functions
 
         //- Clear savedFields
+        //- The pressure argument is per mixture volume (granular Ptot)
+        virtual bool phasePressure() const
+        {
+            return false;
+        }
+
         virtual void clear();
 
         //- Allocate saved fields

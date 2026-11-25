@@ -87,12 +87,24 @@ Foam::granularPhaseModel::granularPhaseModel
         1.5*this->alphaRhoPhi_*fvc::interpolate(Theta_)
     ),
     fluxScheme_(),
+    phasePressureFlux_(false),
+    conservativePTE_(false),
     surfTModel_(surfaceTemperatureModel::New(phaseDict_, *this))
 {
     kineticTheorySystem_.addPhase(*this);
     thermoPtr_->read(phaseDict_);
 
     fluxScheme_ = phaseFluxScheme::NewSolid(phi_, residualAlpha().value());
+    phasePressureFlux_ =
+        fluxScheme_->phasePressure()
+     && phaseDict_.lookupOrDefault<Switch>("phasePressureFlux", true);
+    conservativePTE_ =
+        phasePressureFlux_
+     && phaseDict_.lookupOrDefault<Switch>
+        (
+            "conservativeGranularEnergy",
+            false
+        );
     fluid.mesh().addTemporaryObject(reconstruction::ownName(alphaRho_.name()));
     fluid.mesh().addTemporaryObject(reconstruction::neiName(alphaRho_.name()));
 }
@@ -170,12 +182,49 @@ void Foam::granularPhaseModel::solve()
         fvc::div(alphaRhoEPhi_)
     );
 
-    //- Pseudo thermal energy transport
+    //- Pseudo thermal energy transport. With a phase-pressure flux scheme
+    //  alphaRhoPTEPhi is the flux of the granular mechanical energy
+    //  alphaRho*(0.5|U|^2 + 1.5 Theta) from the Riemann solver, and the
+    //  change of the kinetic energy by the mass and momentum fluxes over the
+    //  step is taken out (exact for the step: a cell filled from a nearly
+    //  empty state keeps the kinetic energy of the incoming mass): the
+    //  granular energy gains exactly the kinetic energy the fluxes remove
+    //  (shocks, stagnation at walls). The form Ps div(phi) is not consistent
+    //  with the momentum flux where a dilute stream enters a denser cell and
+    //  creates energy there.
     volScalarField deltaAlphaRhoPTE
     (
         IOobject::groupName("deltaAlphaRhoPTE", name_),
-        fvc::div(alphaRhoPTEPhi_) + Ps_*fvc::div(phi_)
+        fvc::div(alphaRhoPTEPhi_)
     );
+    if (conservativePTE_)
+    {
+        const scalar rAlphaRho = residualAlphaRho().value();
+        const volScalarField alphaRhoF
+        (
+            alphaRho_ - dT*fvc::div(alphaRhoPhi_)
+        );
+        const volVectorField alphaRhoUF
+        (
+            alphaRhoU_ - dT*fvc::div(alphaRhoUPhi_)
+        );
+        forAll(deltaAlphaRhoPTE, celli)
+        {
+            const scalar K0 =
+                alphaRho_[celli] > rAlphaRho
+              ? 0.5*magSqr(alphaRhoU_[celli])/alphaRho_[celli]
+              : 0.0;
+            const scalar K1 =
+                alphaRhoF[celli] > rAlphaRho
+              ? 0.5*magSqr(alphaRhoUF[celli])/alphaRhoF[celli]
+              : 0.0;
+            deltaAlphaRhoPTE[celli] += (K1 - K0)/dT.value();
+        }
+    }
+    else
+    {
+        deltaAlphaRhoPTE += Ps_*fvc::div(phi_);
+    }
 
     // Buoyancy from the mixture fluid pressure. The pressures of the
     // individual fluid phases are not defined where those phases are absent,
@@ -417,19 +466,77 @@ void Foam::granularPhaseModel::solveImplicit()
 
 void Foam::granularPhaseModel::update()
 {
-    fluxScheme_->update
-    (
-        *this,
-        rho_,
-        U_,
-        e_,
-        Ptot_,
-        speedOfSound()(),
-        phi_,
-        alphaRhoPhi_,
-        alphaRhoUPhi_,
-        alphaRhoEPhi_
-    );
+    // Pressure for the flux scheme. The phase flux schemes take the phase
+    // pressure (momentum flux alpha*p), while Ptot is per mixture volume
+    tmp<volScalarField> tp(Ptot_);
+    if (phasePressureFlux_)
+    {
+        const scalar rAlpha = residualAlpha().value();
+        const volScalarField& alpha = *this;
+        tmp<volScalarField> tpPhase
+        (
+            volScalarField::New
+            (
+                IOobject::groupName("pGranular", name_),
+                Ptot_/Foam::max(alpha, residualAlpha())
+            )
+        );
+        volScalarField& pPhase = tpPhase.ref();
+        forAll(pPhase, celli)
+        {
+            if (alpha[celli] <= rAlpha)
+            {
+                pPhase[celli] = 0;
+            }
+        }
+        tp = tpPhase;
+    }
+
+    if (conservativePTE_)
+    {
+        // The energy passed is the granular energy 1.5 Theta, so the energy
+        // flux returned is the flux of the granular mechanical energy
+        // alphaRho*(0.5|U|^2 + 1.5 Theta)
+        const volScalarField eGranular
+        (
+            IOobject::groupName("eGranular", name_),
+            1.5*Theta_
+        );
+        fluxScheme_->update
+        (
+            *this,
+            rho_,
+            U_,
+            eGranular,
+            tp(),
+            speedOfSound()(),
+            phi_,
+            alphaRhoPhi_,
+            alphaRhoUPhi_,
+            alphaRhoPTEPhi_
+        );
+    }
+    else
+    {
+        fluxScheme_->update
+        (
+            *this,
+            rho_,
+            U_,
+            e_,
+            tp(),
+            speedOfSound()(),
+            phi_,
+            alphaRhoPhi_,
+            alphaRhoUPhi_,
+            alphaRhoEPhi_
+        );
+
+        //- Calculate PTE flux by using Riemann flux scheme to interpolate
+        //  granular energy
+        alphaRhoPTEPhi_ =
+            1.5*fluxScheme_->flux(Theta_, alphaRho_, phi_, false);
+    }
 
     //- Thermal energy flux. alphaRhoE is the thermal energy
     //  alphaRho*(e - eCold), which is advected with the mass flux: the
@@ -452,11 +559,6 @@ void Foam::granularPhaseModel::update()
               + neg(alphaRhoPhi_)*teThNei()
             );
     }
-
-    //- Calculate PTE flux by using Riemann flux scheme to interpolate
-    //  granular energy
-    alphaRhoPTEPhi_ =
-        1.5*fluxScheme_->flux(Theta_, alphaRho_, phi_, false);
 
     thermoPtr_->update();
     surfTModel_->update();

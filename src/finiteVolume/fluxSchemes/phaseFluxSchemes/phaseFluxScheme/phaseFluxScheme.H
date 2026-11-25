@@ -257,6 +257,14 @@ public:
     // Member Functions
 
         //- Clear savedFields
+        //- Is the pressure argument of update the phase pressure (per
+        //  phase volume, momentum flux alpha*p)? False for schemes that
+        //  take a pressure per mixture volume (granular AUSM+Up)
+        virtual bool phasePressure() const
+        {
+            return true;
+        }
+
         virtual void clear();
 
         //- Allocate saved fields

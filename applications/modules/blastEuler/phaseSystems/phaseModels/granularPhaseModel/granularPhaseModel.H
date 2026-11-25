@@ -105,6 +105,18 @@ protected:
         //- Flux scheme
         autoPtr<phaseFluxScheme> fluxScheme_;
 
+        //- Phase pressure Ptot/alpha in the flux scheme (phasePressureFlux,
+        //  default yes; only with flux schemes that take the phase
+        //  pressure). no: Ptot, a factor alpha too small in the momentum
+        //  flux (before 2026-11-25)
+        bool phasePressureFlux_;
+
+        //- Granular energy from the conservative mechanical-energy flux
+        //  minus the kinetic-energy change of the fluxes
+        //  (conservativeGranularEnergy, default no; needs
+        //  phasePressureFlux). no: Ps div(phi)
+        bool conservativePTE_;
+
         //- Surface temperature model
         autoPtr<surfaceTemperatureModel> surfTModel_;
 
